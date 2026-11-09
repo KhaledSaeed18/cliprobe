@@ -4,16 +4,24 @@ import { join } from 'node:path';
 import { sandbox } from './sandbox.ts';
 
 const STDERR_CAP = 64 * 1024;
+const STDOUT_CAP = 1024 * 1024;
 
 export interface RunOptions {
     /** Make stdout a pipe whose read end is already closed. */
-    closedStdout: boolean;
+    closedStdout?: boolean;
     /** Kill the whole process group after this many milliseconds. */
     timeout: number;
+    /** Changes to the minimal environment; `undefined` removes a variable. */
+    env?: Readonly<Record<string, string | undefined>>;
+    /** Called on timeout just before the process group is killed. */
+    beforeKill?: () => void;
 }
 
 export interface RunResult {
+    /** Total bytes written to stdout. */
     stdoutBytes: number;
+    /** The first 1 MiB of stdout. */
+    stdout: Buffer;
     stderr: string;
     timedOut: boolean;
     exitCode: number | null;
@@ -31,9 +39,14 @@ type Outcome = Pick<RunResult, 'exitCode' | 'signal' | 'spawnError'>;
 export function run(
     command: string,
     args: readonly string[],
-    { closedStdout, timeout }: RunOptions
+    { closedStdout = false, timeout, env: overrides = {}, beforeKill }: RunOptions
 ): Promise<RunResult> {
-    const { dir, env } = sandbox();
+    const { dir, env: base } = sandbox();
+    const env: Record<string, string> = { ...base };
+    for (const [key, value] of Object.entries(overrides)) {
+        if (value === undefined) delete env[key];
+        else env[key] = value;
+    }
     let stdoutFd: number | 'pipe' = 'pipe';
     if (closedStdout) {
         const fifo = join(dir, 'stdout.fifo');
@@ -45,6 +58,7 @@ export function run(
 
     return new Promise((resolve) => {
         let stdoutBytes = 0;
+        const stdoutChunks: Buffer[] = [];
         let stderr = '';
         let timedOut = false;
         let finished = false;
@@ -54,7 +68,8 @@ export function run(
             finished = true;
             if (typeof stdoutFd === 'number') closeSync(stdoutFd);
             rmSync(dir, { recursive: true, force: true });
-            resolve({ stdoutBytes, stderr, timedOut, ...outcome });
+            const stdout = Buffer.concat(stdoutChunks).subarray(0, STDOUT_CAP);
+            resolve({ stdoutBytes, stdout, stderr, timedOut, ...outcome });
         };
         let child: ChildProcess;
         try {
@@ -72,6 +87,7 @@ export function run(
         }
         const timer = setTimeout(() => {
             timedOut = true;
+            beforeKill?.();
             try {
                 if (child.pid !== undefined) process.kill(-child.pid, 'SIGKILL');
             } catch {
@@ -79,6 +95,7 @@ export function run(
             }
         }, timeout);
         child.stdout?.on('data', (chunk: Buffer) => {
+            if (stdoutBytes < STDOUT_CAP) stdoutChunks.push(chunk);
             stdoutBytes += chunk.length;
         });
         child.stderr?.on('data', (chunk: Buffer) => {
