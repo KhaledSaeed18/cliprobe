@@ -1,6 +1,6 @@
 import { crashEvidence, ERROR_RE } from '../core/evidence.ts';
 import { run, type RunResult } from '../core/run.ts';
-import type { Judgement, Result } from '../core/types.ts';
+import type { Check, Judgement, Result } from '../core/types.ts';
 
 export interface ClosedPipeResult extends Result {
     baseline: { exitCode: number | null; signal: NodeJS.Signals | null; stdoutBytes: number };
@@ -67,3 +67,16 @@ export async function closedPipe(
         },
     };
 }
+
+export const closedPipeCheck: Check = {
+    name: 'closed-pipe',
+    kind: 'check',
+    summary: 'crashes or hangs when stdout is closed early (| head, grep -q, an agent)',
+    async run(target, ctx) {
+        const results: Result[] = [];
+        for (const args of target.invocations) {
+            results.push(await closedPipe(target.command, args, ctx.timeout));
+        }
+        return results;
+    },
+};

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // cliprobe: black-box tests a command-line program for terminal-edge bugs.
-import { closedPipe } from '../checks/closed-pipe.ts';
-import type { Result } from '../core/types.ts';
+import { CHECKS } from '../checks/index.ts';
+import type { Result, Target } from '../core/types.ts';
 import { formatHuman } from '../report/human.ts';
 import { formatJson } from '../report/json.ts';
 import { VERSION } from '../version.ts';
@@ -64,16 +64,28 @@ async function main(): Promise<number> {
         return 2;
     }
 
-    const invocations = opts.args.length ? [opts.args] : [['--version'], ['--help']];
+    const target: Target = {
+        command: opts.command,
+        invocations: opts.args.length ? [opts.args] : [['--version'], ['--help']],
+    };
+    const checks = CHECKS;
     const results: Result[] = [];
-    for (const args of invocations) {
-        results.push(await closedPipe(opts.command, args, opts.timeout));
+    for (const check of checks) {
+        results.push(...(await check.run(target, { timeout: opts.timeout })));
     }
 
     if (opts.json) out(formatJson(VERSION, opts.command, results));
     else {
         const useColor = process.stdout.isTTY && !process.env['NO_COLOR'];
-        out(formatHuman(VERSION, opts.command, results, useColor));
+        out(
+            formatHuman(
+                VERSION,
+                opts.command,
+                checks.map((c) => c.name),
+                results,
+                useColor
+            )
+        );
     }
     if (results.some((r) => r.verdict === 'fail')) return 1;
     if (results.every((r) => r.verdict === 'error')) return 2;
