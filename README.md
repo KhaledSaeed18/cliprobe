@@ -32,12 +32,13 @@ npx cliprobe -- node ./dist/cli.js list   # test your own CLI before publishing
 npx cliprobe --json -- <command>          # machine-readable results
 ```
 
-| Option            | Meaning                                      |
-| ----------------- | -------------------------------------------- |
-| `--json`          | Print results as JSON                        |
-| `--timeout <ms>`  | Kill a probe after this long (default 15000) |
-| `-h`, `--help`    | Show help                                    |
-| `-v`, `--version` | Show the version                             |
+| Option            | Meaning                                                  |
+| ----------------- | -------------------------------------------------------- |
+| `--check <name>`  | Run only this check; repeat it or use commas for several |
+| `--json`          | Print results as JSON, including the checks that ran     |
+| `--timeout <ms>`  | Kill a probe after this long (default 15000)             |
+| `-h`, `--help`    | Show help                                                |
+| `-v`, `--version` | Show the version                                         |
 
 Exit codes: `0` no failures, `1` a check failed, `2` usage error or the command could not run. That makes it usable as a CI gate.
 

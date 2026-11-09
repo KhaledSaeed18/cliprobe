@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // cliprobe: black-box tests a command-line program for terminal-edge bugs.
-import { CHECKS } from '../checks/index.ts';
+import { CHECKS, selectChecks } from '../checks/index.ts';
 import type { Result, Target } from '../core/types.ts';
 import { formatHuman } from '../report/human.ts';
 import { formatJson } from '../report/json.ts';
@@ -15,13 +15,14 @@ Usage:
 With no args after <command>, cliprobe probes "<command> --version" and
 "<command> --help". With args, it probes exactly that invocation.
 
-Checks (0.0.1):
+Checks:
   closed-pipe   Runs the command with stdout already closed, as when output is
                 piped into a reader that quits early (head, grep -q, an agent).
                 A well-behaved program exits quietly; a buggy one crashes with
                 an EPIPE error and a stack trace.
 
 Options:
+  --check <name>     Run only this check; repeat it or use commas for several
   --json             Print results as JSON
   --timeout <ms>     Kill a probe after this long (default 15000)
   -h, --help         Show this help
@@ -55,6 +56,13 @@ async function main(): Promise<number> {
         out(VERSION + '\n');
         return 0;
     }
+    const { checks, unknown } = selectChecks(opts.checks);
+    if (unknown.length) {
+        const available = CHECKS.map((c) => c.name).join(', ');
+        const quoted = unknown.map((n) => `"${n}"`).join(', ');
+        err(`cliprobe: unknown check ${quoted} (available: ${available})\n`);
+        return 2;
+    }
     if (!opts.command) {
         err('cliprobe: no command given\nUsage: cliprobe [options] -- <command> [args...]\n');
         return 2;
@@ -68,14 +76,21 @@ async function main(): Promise<number> {
         command: opts.command,
         invocations: opts.args.length ? [opts.args] : [['--version'], ['--help']],
     };
-    const checks = CHECKS;
     const results: Result[] = [];
     for (const check of checks) {
         results.push(...(await check.run(target, { timeout: opts.timeout })));
     }
 
-    if (opts.json) out(formatJson(VERSION, opts.command, results));
-    else {
+    if (opts.json) {
+        out(
+            formatJson(
+                VERSION,
+                opts.command,
+                checks.map((c) => c.name),
+                results
+            )
+        );
+    } else {
         const useColor = process.stdout.isTTY && !process.env['NO_COLOR'];
         out(
             formatHuman(

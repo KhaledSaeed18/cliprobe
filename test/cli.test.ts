@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cliprobe, fixture, probeJson } from './helpers/cli.ts';
+import { cliprobe, fixture, probeJson, type Report } from './helpers/cli.ts';
 
 describe('cli', () => {
     it('escapes control characters from the target in human output', () => {
@@ -32,5 +32,25 @@ describe('cli', () => {
     it('survives its own closed stdout', () => {
         const r = cliprobe(['--json', '--', process.execPath, fixture('clean')]);
         expect(r.status).toBe(0);
+    });
+
+    it('runs only the checks named with --check and lists them in JSON', () => {
+        const r = cliprobe(['--json', '--check', 'closed-pipe', '--', 'printf', 'hi\\n']);
+        expect(r.status).toBe(0);
+        const report = JSON.parse(r.stdout) as Report;
+        expect(report.checks).toEqual(['closed-pipe']);
+        expect(report.results.map((x) => x.check)).toEqual(['closed-pipe']);
+    });
+
+    it('exits 2 on an unknown check and names the available ones', () => {
+        const r = cliprobe(['--check', 'colour', '--', 'node']);
+        expect(r.status).toBe(2);
+        expect(r.stderr).toContain('unknown check "colour"');
+        expect(r.stderr).toContain('available: closed-pipe');
+        expect(r.stdout).toBe('');
+    });
+
+    it('lists --check in --help', () => {
+        expect(cliprobe(['--help']).stdout).toContain('--check <name>');
     });
 });

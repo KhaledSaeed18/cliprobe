@@ -20,6 +20,7 @@ export function cliprobe(args: readonly string[], cwd?: string): CliResult {
 }
 
 export interface JsonResult {
+    check: string;
     verdict: string;
     reason: string;
     evidence?: string;
@@ -31,6 +32,7 @@ export interface Report {
     tool: string;
     version: string;
     command: string;
+    checks: string[];
     results: JsonResult[];
 }
 

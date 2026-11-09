@@ -5,6 +5,8 @@ export interface Options {
     timeout: number;
     help: boolean;
     version: boolean;
+    /** Check names from --check, in the order given; empty means all. */
+    checks: string[];
     command: string | undefined;
     args: string[];
 }
@@ -15,6 +17,7 @@ export function parseArgs(argv: readonly string[]): Options {
         timeout: 15000,
         help: false,
         version: false,
+        checks: [],
         command: undefined,
         args: [],
     };
@@ -35,6 +38,14 @@ export function parseArgs(argv: readonly string[]): Options {
                     `--timeout needs a positive whole number of milliseconds, got "${String(value)}"`
                 );
             }
+        } else if (a === '--check' || a.startsWith('--check=')) {
+            const value = a.includes('=') ? a.slice(a.indexOf('=') + 1) : argv[++i];
+            const names = (value ?? '')
+                .split(',')
+                .map((n) => n.trim())
+                .filter(Boolean);
+            if (names.length === 0) throw new UsageError('--check needs a check name');
+            opts.checks.push(...names);
         } else if (a.startsWith('-')) throw new UsageError(`unknown option "${a}"`);
         else {
             // No "--": the first bare argument starts the command.
