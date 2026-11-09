@@ -1,0 +1,60 @@
+import { describe, expect, it } from 'vitest';
+import { BIN, first, fixture, probeJson, ROOT } from './helpers/cli.ts';
+
+const node = process.execPath;
+
+describe('closed-pipe', () => {
+    it('fails a raw process.stdout.write that crashes', () => {
+        const { status, report } = probeJson([node, fixture('crash')]);
+        expect(status).toBe(1);
+        expect(first(report).verdict).toBe('fail');
+        expect(first(report).evidence).toMatch(/EPIPE|Unhandled 'error'/);
+    });
+
+    it('passes console.log, because console swallows stream errors', () => {
+        const { status, report } = probeJson([node, fixture('clean')]);
+        expect(status).toBe(0);
+        expect(first(report).verdict).toBe('pass');
+    });
+
+    it('passes a program that handles EPIPE', () => {
+        const { report } = probeJson([node, fixture('handled')]);
+        expect(first(report).verdict).toBe('pass');
+    });
+
+    it('passes a fast native program stopped by SIGPIPE, deterministically', () => {
+        for (let i = 0; i < 10; i++) {
+            const { report } = probeJson(['printf', 'hello\\n']);
+            expect(first(report).verdict).toBe('pass');
+            expect(first(report).closed.signal).toBe('SIGPIPE');
+        }
+    });
+
+    it('skips a program that writes nothing to stdout', () => {
+        const { status, report } = probeJson([node, fixture('silent')]);
+        expect(status).toBe(0);
+        expect(first(report).verdict).toBe('skip');
+    });
+
+    it('fails a program that hangs only after stdout closes', () => {
+        const { status, report } = probeJson([node, fixture('hang')]);
+        expect(status).toBe(1);
+        expect(first(report).verdict).toBe('fail');
+        expect(first(report).closed.timedOut).toBe(true);
+    });
+
+    it('passes cliprobe itself', () => {
+        const { report } = probeJson([node, BIN, '--help']);
+        expect(first(report).verdict).toBe('pass');
+    });
+
+    it("resolves a relative command path from the caller's directory", () => {
+        const { report } = probeJson(['./test/fixtures/run-crash.sh'], ROOT);
+        expect(first(report).verdict).toBe('fail');
+    });
+
+    it("resolves relative arguments from the caller's directory", () => {
+        const { report } = probeJson(['node', './test/fixtures/crash.mjs'], ROOT);
+        expect(first(report).verdict).toBe('fail');
+    });
+});
