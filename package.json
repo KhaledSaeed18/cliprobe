@@ -1,46 +1,70 @@
 {
-  "name": "cliprobe",
-  "version": "0.0.1",
-  "description": "Black-box test any command-line program for terminal-edge bugs. 0.0.1 checks whether it crashes when its stdout is closed early (| head, grep -q, agents).",
-  "type": "module",
-  "bin": {
-    "cliprobe": "bin/cliprobe.js"
-  },
-  "files": [
-    "bin"
-  ],
-  "scripts": {
-    "test": "node --test test/*.test.js"
-  },
-  "keywords": [
-    "cli",
-    "testing",
-    "epipe",
-    "sigpipe",
-    "broken-pipe",
-    "black-box",
-    "conformance",
-    "terminal",
-    "agent-ready"
-  ],
-  "author": {
-    "name": "Khaled Saeed",
-    "url": "https://github.com/KhaledSaeed18"
-  },
-  "license": "MIT",
-  "engines": {
-    "node": ">=22.12.0"
-  },
-  "os": [
-    "darwin",
-    "linux"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/KhaledSaeed18/cliprobe.git"
-  },
-  "bugs": {
-    "url": "https://github.com/KhaledSaeed18/cliprobe/issues"
-  },
-  "homepage": "https://github.com/KhaledSaeed18/cliprobe#readme"
+    "name": "cliprobe",
+    "version": "0.0.1",
+    "description": "Black-box test any command-line program for terminal-edge bugs. 0.0.1 checks whether it crashes when its stdout is closed early (| head, grep -q, agents).",
+    "type": "module",
+    "bin": {
+        "cliprobe": "dist/cli.js"
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsdown",
+        "dev": "node src/cli/main.ts",
+        "typecheck": "tsc --noEmit",
+        "lint": "oxlint --type-aware --deny-warnings",
+        "lint:fix": "oxlint --type-aware --fix",
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "test": "pnpm build && node --test test/*.test.js",
+        "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm build && pnpm test && pnpm check:package",
+        "check:package": "publint --strict",
+        "prepublishOnly": "pnpm build"
+    },
+    "keywords": [
+        "cli",
+        "testing",
+        "epipe",
+        "sigpipe",
+        "broken-pipe",
+        "black-box",
+        "conformance",
+        "terminal",
+        "agent-ready"
+    ],
+    "author": {
+        "name": "Khaled Saeed",
+        "url": "https://github.com/KhaledSaeed18"
+    },
+    "license": "MIT",
+    "engines": {
+        "node": ">=22.12.0"
+    },
+    "os": [
+        "darwin",
+        "linux"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/KhaledSaeed18/cliprobe.git"
+    },
+    "bugs": {
+        "url": "https://github.com/KhaledSaeed18/cliprobe/issues"
+    },
+    "homepage": "https://github.com/KhaledSaeed18/cliprobe#readme",
+    "publishConfig": {
+        "access": "public",
+        "provenance": true
+    },
+    "devDependencies": {
+        "@types/node": "^22.20.5",
+        "oxlint": "^1.88.0",
+        "oxlint-tsgolint": "^7.0.2004",
+        "prettier": "^3.9.10",
+        "publint": "^0.3.25",
+        "tsdown": "^0.23.1",
+        "typescript": "^7.0.2"
+    },
+    "packageManager": "pnpm@12.14.0"
 }

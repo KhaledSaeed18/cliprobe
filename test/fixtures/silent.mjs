@@ -1,1 +1,1 @@
-process.stderr.write("only stderr\n");
+process.stderr.write('only stderr\n');

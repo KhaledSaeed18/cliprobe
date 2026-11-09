@@ -32,12 +32,12 @@ npx cliprobe -- node ./dist/cli.js list   # test your own CLI before publishing
 npx cliprobe --json -- <command>          # machine-readable results
 ```
 
-| Option | Meaning |
-|---|---|
-| `--json` | Print results as JSON |
-| `--timeout <ms>` | Kill a probe after this long (default 15000) |
-| `-h`, `--help` | Show help |
-| `-v`, `--version` | Show the version |
+| Option            | Meaning                                      |
+| ----------------- | -------------------------------------------- |
+| `--json`          | Print results as JSON                        |
+| `--timeout <ms>`  | Kill a probe after this long (default 15000) |
+| `-h`, `--help`    | Show help                                    |
+| `-v`, `--version` | Show the version                             |
 
 Exit codes: `0` no failures, `1` a check failed, `2` usage error or the command could not run. That makes it usable as a CI gate.
 
@@ -45,12 +45,12 @@ Exit codes: `0` no failures, `1` a check failed, `2` usage error or the command 
 
 **closed-pipe** (0.0.1). cliprobe runs the command twice: once normally, then with stdout set to a pipe whose reading end is already closed, so the first write fails every time, even for fast native programs. Results:
 
-| Verdict | Meaning |
-|---|---|
-| `PASS` | Exited quietly, or was stopped by SIGPIPE (the Unix convention) |
-| `FAIL` | Printed an EPIPE error or stack trace and changed its exit code, or hung |
-| `WARN` | Printed a write error but kept its exit code |
-| `SKIP` | Wrote nothing to stdout for this invocation, so pass args that print something |
+| Verdict | Meaning                                                                        |
+| ------- | ------------------------------------------------------------------------------ |
+| `PASS`  | Exited quietly, or was stopped by SIGPIPE (the Unix convention)                |
+| `FAIL`  | Printed an EPIPE error or stack trace and changed its exit code, or hung       |
+| `WARN`  | Printed a write error but kept its exit code                                   |
+| `SKIP`  | Wrote nothing to stdout for this invocation, so pass args that print something |
 
 Planned next: color handling under a real terminal vs a pipe vs `NO_COLOR`, Ctrl-C behavior, control characters in output, and startup time.
 
@@ -59,8 +59,8 @@ Planned next: color handling under a real terminal vs a pipe vs `NO_COLOR`, Ctrl
 Handle `EPIPE` on stdout once, near your entry point:
 
 ```js
-process.stdout.on("error", (error) => {
-  if (error.code === "EPIPE") process.exit(0);
+process.stdout.on('error', (error) => {
+  if (error.code === 'EPIPE') process.exit(0);
   throw error;
 });
 ```

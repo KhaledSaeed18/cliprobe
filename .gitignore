@@ -1,3 +1,14 @@
+# Dependencies
 node_modules/
+
+# Build and test output
+dist/
+coverage/
 *.tgz
+
+# Logs
+*.log
+pnpm-debug.log*
+
+# OS files
 .DS_Store
