@@ -1,0 +1,46 @@
+{
+  "name": "cliprobe",
+  "version": "0.0.1",
+  "description": "Black-box test any command-line program for terminal-edge bugs. 0.0.1 checks whether it crashes when its stdout is closed early (| head, grep -q, agents).",
+  "type": "module",
+  "bin": {
+    "cliprobe": "bin/cliprobe.js"
+  },
+  "files": [
+    "bin"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [
+    "cli",
+    "testing",
+    "epipe",
+    "sigpipe",
+    "broken-pipe",
+    "black-box",
+    "conformance",
+    "terminal",
+    "agent-ready"
+  ],
+  "author": {
+    "name": "Khaled Saeed",
+    "url": "https://github.com/KhaledSaeed18"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KhaledSaeed18/cliprobe.git"
+  },
+  "bugs": {
+    "url": "https://github.com/KhaledSaeed18/cliprobe/issues"
+  },
+  "homepage": "https://github.com/KhaledSaeed18/cliprobe#readme"
+}
