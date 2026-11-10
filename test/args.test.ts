@@ -26,7 +26,7 @@ describe('parseArgs --check', () => {
 
 describe('selectChecks', () => {
     it('selects every check when no names are given', () => {
-        expect(selectChecks([]).checks.map((c) => c.name)).toEqual(['closed-pipe']);
+        expect(selectChecks([]).checks.map((c) => c.name)).toEqual(['closed-pipe', 'color']);
     });
 
     it('selects by name and ignores duplicates', () => {

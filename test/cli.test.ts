@@ -12,11 +12,12 @@ describe('cli', () => {
     it('reports a missing command as could-not-run with exit 2', () => {
         const { status, report } = probeJson(['cliprobe-no-such-command-xyz']);
         expect(status).toBe(2);
+        expect(report.checks).toEqual(['closed-pipe', 'color']);
         expect(report.results.every((r) => r.verdict === 'error')).toBe(true);
     });
 
     it('probes --version and --help when given no args', () => {
-        const { report } = probeJson(['node']);
+        const { report } = probeJson(['node'], { checks: ['closed-pipe'] });
         expect(report.results.map((r) => r.invocation.slice(1))).toEqual([
             ['--version'],
             ['--help'],

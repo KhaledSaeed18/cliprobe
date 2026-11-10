@@ -20,6 +20,9 @@ Checks:
                 piped into a reader that quits early (head, grep -q, an agent).
                 A well-behaved program exits quietly; a buggy one crashes with
                 an EPIPE error and a stack trace.
+  color         Runs the command into a pipe, then under a terminal, then under
+                a terminal with NO_COLOR=1. Fails if color codes reach a pipe;
+                warns if color goes to a piped stderr or NO_COLOR is ignored.
 
 Options:
   --check <name>     Run only this check; repeat it or use commas for several

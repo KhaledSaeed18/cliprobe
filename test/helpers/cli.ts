@@ -36,12 +36,23 @@ export interface Report {
     results: JsonResult[];
 }
 
+export interface ProbeOptions {
+    cwd?: string;
+    /** Only these checks; all of them when left out. */
+    checks?: readonly string[];
+    timeout?: number;
+}
+
 /** Runs cliprobe --json on a command and parses the report. */
 export function probeJson(
     command: readonly string[],
-    cwd?: string
+    { cwd, checks = [], timeout = 3000 }: ProbeOptions = {}
 ): { status: number | null; report: Report } {
-    const r = cliprobe(['--json', '--timeout', '3000', '--', ...command], cwd);
+    const checkArgs = checks.length ? ['--check', checks.join(',')] : [];
+    const r = cliprobe(
+        ['--json', '--timeout', String(timeout), ...checkArgs, '--', ...command],
+        cwd
+    );
     return { status: r.status, report: JSON.parse(r.stdout) as Report };
 }
 
