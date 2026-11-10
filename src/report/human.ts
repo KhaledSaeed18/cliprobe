@@ -1,7 +1,14 @@
 import { safe } from '../core/safe.ts';
 import type { Result, Verdict } from '../core/types.ts';
 
-const COLORS: Record<Verdict, number> = { pass: 32, fail: 31, warn: 33, skip: 90, error: 35 };
+const COLORS: Record<Verdict, number> = {
+    pass: 32,
+    fail: 31,
+    warn: 33,
+    skip: 90,
+    error: 35,
+    info: 36,
+};
 
 export function formatHuman(
     version: string,
@@ -33,10 +40,11 @@ export function formatHuman(
         }
     }
     const count = (v: Verdict): number => results.filter((r) => r.verdict === v).length;
+    const info = count('info') ? `, ${count('info')} info` : '';
     const errors = count('error') ? `, ${count('error')} could not run` : '';
     lines.push(
         '',
-        `${count('fail')} failed, ${count('warn')} warned, ${count('pass')} passed, ${count('skip')} skipped${errors}`
+        `${count('fail')} failed, ${count('warn')} warned, ${count('pass')} passed, ${count('skip')} skipped${info}${errors}`
     );
     return lines.join('\n') + '\n';
 }

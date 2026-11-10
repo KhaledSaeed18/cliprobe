@@ -1,4 +1,5 @@
-export type Verdict = 'pass' | 'fail' | 'warn' | 'skip' | 'error';
+/** `info` is the only verdict of an info check: a measurement or observation, never a failure. */
+export type Verdict = 'pass' | 'fail' | 'warn' | 'skip' | 'error' | 'info';
 
 /** One check's outcome for one invocation, with the evidence that led to it. */
 export interface Result {
@@ -21,6 +22,8 @@ export interface Target {
     command: string;
     /** Arguments for each probe, with {fixture} already replaced by `fixtureDir`. */
     invocations: string[][];
+    /** True when the user gave the probe arguments; false for the default --version and --help. */
+    explicit: boolean;
     /** The directory of hostile file names, when the arguments asked for one. */
     fixtureDir?: string;
 }

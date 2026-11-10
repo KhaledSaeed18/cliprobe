@@ -19,19 +19,23 @@ describe('parseArgs --check', () => {
         expect(() => parseArgs(['--check', ',', 'node'])).toThrow(UsageError);
     });
 
-    it('defaults to no names, which means every check', () => {
+    it('defaults to no names, which means every check of kind check', () => {
         expect(parseArgs(['node']).checks).toEqual([]);
     });
 });
 
 describe('selectChecks', () => {
-    it('selects every check when no names are given', () => {
+    it('selects every check but no info check when no names are given', () => {
         expect(selectChecks([]).checks.map((c) => c.name)).toEqual([
             'closed-pipe',
             'color',
             'ctrl-c',
             'control-chars',
         ]);
+    });
+
+    it('selects an info check when it is named', () => {
+        expect(selectChecks(['startup']).checks.map((c) => c.name)).toEqual(['startup']);
     });
 
     it('selects by name and ignores duplicates', () => {

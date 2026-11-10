@@ -36,6 +36,10 @@ Checks:
                 the terminal unescaped; warns for the others. Skipped without
                 {fixture}, e.g. cliprobe -- ls {fixture}
 
+Info checks (never fail; run only when named with --check):
+  startup       Median wall time over 5 runs of "<command> --version", or of the
+                probe as given, e.g. cliprobe --check startup -- node cli.js -v
+
 Options:
   --check <name>     Run only this check; repeat it or use commas for several
   --json             Print results as JSON
@@ -93,6 +97,7 @@ async function main(): Promise<number> {
     try {
         const target: Target = {
             command: opts.command,
+            explicit: opts.args.length > 0,
             invocations: fixture
                 ? invocations.map((a) => expandFixture(a, fixture.dir))
                 : invocations,
