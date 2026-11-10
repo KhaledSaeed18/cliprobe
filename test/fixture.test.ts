@@ -1,7 +1,7 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 import {
     collapseFixture,
     createFixture,
@@ -48,7 +48,9 @@ describe('placeholder', () => {
     });
 
     it('reaches the program as a real directory that is gone afterwards, and reports as {fixture}', () => {
-        const out = join(mkdtempSync(join(tmpdir(), 'cliprobe-test-')), 'arg');
+        const scratch = mkdtempSync(join(tmpdir(), 'cliprobe-test-'));
+        onTestFinished(() => rmSync(scratch, { recursive: true, force: true }));
+        const out = join(scratch, 'arg');
         const { report } = probeJson([process.execPath, fixture('record-arg'), '{fixture}', out], {
             checks: ['closed-pipe'],
         });

@@ -1,7 +1,7 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { judgeColor } from '../src/checks/color.ts';
 import type { RunResult } from '../src/core/run.ts';
 import { cliprobe, first, fixture, probeJson } from './helpers/cli.ts';
@@ -81,6 +81,7 @@ describe('color: fixtures', () => {
 describe('color: real tools must not fail', () => {
     const dir = mkdtempSync(join(tmpdir(), 'cliprobe-color-'));
     writeFileSync(join(dir, 'file.txt'), 'needle in a haystack\n');
+    afterAll(() => rmSync(dir, { recursive: true, force: true }));
     const lsColor = process.platform === 'darwin' ? ['ls', '-G', dir] : ['ls', '--color=auto', dir];
 
     it.each([
