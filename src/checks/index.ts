@@ -1,4 +1,5 @@
 import type { Check } from '../core/types.ts';
+import { baselineCheck } from './baseline.ts';
 import { closedPipeCheck } from './closed-pipe.ts';
 import { colorCheck } from './color.ts';
 import { controlCharsCheck } from './control-chars.ts';
@@ -12,6 +13,7 @@ export const CHECKS: readonly Check[] = [
     ctrlCCheck,
     controlCharsCheck,
     startupCheck,
+    baselineCheck,
 ];
 
 export interface Selection {

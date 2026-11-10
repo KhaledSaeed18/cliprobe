@@ -39,6 +39,10 @@ Checks:
 Info checks (never fail; run only when named with --check):
   startup       Median wall time over 5 runs of "<command> --version", or of the
                 probe as given, e.g. cliprobe --check startup -- node cli.js -v
+  baseline      Appends --version, --help and an unknown flag to the probe and
+                reports what scripts rely on: one version line, help on stdout,
+                non-zero exit for a bad flag. A program that ignores unknown
+                flags runs its default action, cut off after 5 s.
 
 Options:
   --check <name>     Run only this check; repeat it or use commas for several
