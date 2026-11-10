@@ -1,9 +1,10 @@
 name: CI
 
+# Pull requests run this directly; pushes to main run it through the release workflow.
 on:
-  push:
-    branches: [main]
   pull_request:
+  workflow_call:
+  workflow_dispatch:
 
 permissions:
   contents: read
