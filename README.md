@@ -53,11 +53,22 @@ Exit codes: `0` no failures, `1` a check failed, `2` usage error or the command 
 | `WARN`  | Printed a write error but kept its exit code                                   |
 | `SKIP`  | Wrote nothing to stdout for this invocation, so pass args that print something |
 
-Planned next: color handling under a real terminal vs a pipe vs `NO_COLOR`, Ctrl-C behavior, control characters in output, and startup time.
+**color**. cliprobe runs the command up to three times: into a pipe, under a real terminal (a pseudo-terminal through the system's `script` command, 80×24), and under a terminal with `NO_COLOR=1`. Every run gets `TERM=xterm-256color` and no `CI` variable, so a program can't pass just because the terminal type looks colorless, and color libraries that force color in CI don't fail it. Color codes in piped output end up in log files and agent transcripts as `\x1b[31m` noise. Results:
+
+| Verdict | Meaning                                                                                      |
+| ------- | -------------------------------------------------------------------------------------------- |
+| `PASS`  | No color in a pipe; in a terminal, either no color at all or color that `NO_COLOR` turns off |
+| `FAIL`  | Printed color or style codes (bold counts, a bare reset doesn't) to stdout in a pipe         |
+| `WARN`  | Printed color to stderr in a pipe, or kept printing color under `NO_COLOR`                   |
+| `SKIP`  | Printed nothing, waited for input in a terminal, or no usable `script` (BusyBox)             |
+
+Many classic tools (git, BSD `ls` and `grep`) color correctly but don't implement [`NO_COLOR`](https://no-color.org), so they get a `WARN`, never a `FAIL`. Probe a command that prints color in normal use: almost no CLI colors its `--help`.
+
+Planned next: Ctrl-C behavior, control characters in output, and startup time.
 
 ## Fixing a failure in a Node.js CLI
 
-Handle `EPIPE` on stdout once, near your entry point:
+**closed-pipe:** handle `EPIPE` on stdout once, near your entry point:
 
 ```js
 process.stdout.on('error', (error) => {
@@ -65,6 +76,14 @@ process.stdout.on('error', (error) => {
   throw error;
 });
 ```
+
+**color:** decide once, from the stream you write to:
+
+```js
+const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
+```
+
+`util.styleText` makes that decision for you on Node 22.13 and later (its `validateStream` option, on by default), and most color libraries check `isTTY` already, but some turn color on whenever `TERM` allows it or `CI` is set.
 
 ## Safety
 
