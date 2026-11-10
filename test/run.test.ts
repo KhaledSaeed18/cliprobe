@@ -56,3 +56,27 @@ describe('run', () => {
         expect(called).toBe(true);
     });
 });
+
+describe('run with a delayed signal', () => {
+    it('sends the signal to a running program and marks where stderr was', async () => {
+        const r = await run(node, [fixture('sigint-130')], {
+            timeout: 5000,
+            signal: { name: 'SIGINT', afterMs: 300 },
+        });
+        expect(r.exitCode).toBe(130);
+        expect(r.signalSentMs).toBeGreaterThanOrEqual(300);
+        expect(r.stderr.slice(0, r.stderrAtSignal)).toBe('before\n');
+        expect(r.stderr.slice(r.stderrAtSignal)).toBe('after\n');
+        expect(r.durationMs).toBeGreaterThanOrEqual(r.signalSentMs ?? 0);
+    });
+
+    it('does not send it to a program that already exited', async () => {
+        const r = await run('printf', ['x'], {
+            timeout: 5000,
+            signal: { name: 'SIGINT', afterMs: 300 },
+        });
+        expect(r.exitCode).toBe(0);
+        expect(r.signalSentMs).toBeUndefined();
+        expect(r.durationMs).toBeLessThan(300);
+    });
+});

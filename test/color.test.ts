@@ -103,6 +103,7 @@ describe('judgeColor without a PTY', () => {
         timedOut: false,
         exitCode: 0,
         signal: null,
+        durationMs: 0,
     });
 
     it('still fails color in a pipe', () => {

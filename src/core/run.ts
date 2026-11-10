@@ -15,6 +15,11 @@ export interface RunOptions {
     env?: Readonly<Record<string, string | undefined>>;
     /** Called on timeout just before the process group is killed. */
     beforeKill?: () => void;
+    /**
+     * Send this signal to the process group after a delay, as a terminal does on
+     * Ctrl-C. Not sent if the program has already exited.
+     */
+    signal?: { name: NodeJS.Signals; afterMs: number };
 }
 
 export interface RunResult {
@@ -27,6 +32,12 @@ export interface RunResult {
     exitCode: number | null;
     signal: NodeJS.Signals | null;
     spawnError?: string;
+    /** Wall time from spawn to exit, in milliseconds. */
+    durationMs: number;
+    /** When `options.signal` was sent, in milliseconds after spawn; absent if it was not. */
+    signalSentMs?: number;
+    /** Length of `stderr` when the signal was sent, to tell output before it from after. */
+    stderrAtSignal?: number;
 }
 
 type Outcome = Pick<RunResult, 'exitCode' | 'signal' | 'spawnError'>;
@@ -39,7 +50,7 @@ type Outcome = Pick<RunResult, 'exitCode' | 'signal' | 'spawnError'>;
 export function run(
     command: string,
     args: readonly string[],
-    { closedStdout = false, timeout, env: overrides = {}, beforeKill }: RunOptions
+    { closedStdout = false, timeout, env: overrides = {}, beforeKill, signal }: RunOptions
 ): Promise<RunResult> {
     const { dir, env: base } = sandbox();
     const env: Record<string, string> = { ...base };
@@ -62,6 +73,10 @@ export function run(
         let stderr = '';
         let timedOut = false;
         let finished = false;
+        let exited = false;
+        let signalSentMs: number | undefined;
+        let stderrAtSignal: number | undefined;
+        const start = performance.now();
         // A failed spawn emits both "error" and "close"; clean up and resolve once.
         const finish = (outcome: Outcome): void => {
             if (finished) return;
@@ -69,7 +84,17 @@ export function run(
             if (typeof stdoutFd === 'number') closeSync(stdoutFd);
             rmSync(dir, { recursive: true, force: true });
             const stdout = Buffer.concat(stdoutChunks).subarray(0, STDOUT_CAP);
-            resolve({ stdoutBytes, stdout, stderr, timedOut, ...outcome });
+            resolve({
+                stdoutBytes,
+                stdout,
+                stderr,
+                timedOut,
+                durationMs: Math.round(performance.now() - start),
+                ...(signalSentMs === undefined
+                    ? {}
+                    : { signalSentMs, stderrAtSignal: stderrAtSignal ?? 0 }),
+                ...outcome,
+            });
         };
         let child: ChildProcess;
         try {
@@ -94,6 +119,22 @@ export function run(
                 // Already gone.
             }
         }, timeout);
+        const signalTimer =
+            signal &&
+            setTimeout(() => {
+                if (exited || child.pid === undefined) return;
+                signalSentMs = Math.round(performance.now() - start);
+                stderrAtSignal = stderr.length;
+                try {
+                    process.kill(-child.pid, signal.name);
+                } catch {
+                    // Exited in the meantime.
+                }
+            }, signal.afterMs);
+        child.on('exit', () => {
+            exited = true;
+            clearTimeout(signalTimer);
+        });
         child.stdout?.on('data', (chunk: Buffer) => {
             if (stdoutBytes < STDOUT_CAP) stdoutChunks.push(chunk);
             stdoutBytes += chunk.length;
@@ -103,11 +144,13 @@ export function run(
         });
         child.on('error', (error) => {
             clearTimeout(timer);
+            clearTimeout(signalTimer);
             finish({ exitCode: null, signal: null, spawnError: error.message });
         });
-        child.on('close', (exitCode, signal) => {
+        child.on('close', (exitCode, exitSignal) => {
             clearTimeout(timer);
-            finish({ exitCode, signal });
+            clearTimeout(signalTimer);
+            finish({ exitCode, signal: exitSignal });
         });
     });
 }
