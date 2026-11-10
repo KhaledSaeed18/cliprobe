@@ -64,7 +64,18 @@ Exit codes: `0` no failures, `1` a check failed, `2` usage error or the command 
 
 Many classic tools (git, BSD `ls` and `grep`) color correctly but don't implement [`NO_COLOR`](https://no-color.org), so they get a `WARN`, never a `FAIL`. Probe a command that prints color in normal use: almost no CLI colors its `--help`.
 
-Planned next: Ctrl-C behavior, control characters in output, and startup time.
+**ctrl-c**. cliprobe lets the command run for 1 second, then sends SIGINT to its process group, which is what a terminal does when you press Ctrl-C, and gives it 3 seconds to exit. Results:
+
+| Verdict | Meaning                                                                                        |
+| ------- | ---------------------------------------------------------------------------------------------- |
+| `PASS`  | Stopped by SIGINT, exited 130 (the convention), or exited with another failure code            |
+| `FAIL`  | Still running 3 seconds later, or printed a stack trace or traceback after the Ctrl-C          |
+| `WARN`  | Exited 0, so a script or an agent can't tell the work was interrupted                          |
+| `SKIP`  | Finished before the Ctrl-C, as `--version` and `--help` do: probe a command that keeps running |
+
+A stack trace printed before the Ctrl-C doesn't count. Python's default `KeyboardInterrupt` traceback is the classic failure here, so `python3 -c 'import time; time.sleep(30)'` fails.
+
+Planned next: control characters in output, and startup time.
 
 ## Fixing a failure in a Node.js CLI
 
@@ -84,6 +95,15 @@ const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
 ```
 
 `util.styleText` makes that decision for you on Node 22.13 and later (its `validateStream` option, on by default), and most color libraries check `isTTY` already, but some turn color on whenever `TERM` allows it or `CI` is set.
+
+**ctrl-c:** Node's default already does the right thing, dying by SIGINT. If you add a handler to clean up, finish by exiting 130 rather than 0, and don't throw from it:
+
+```js
+process.once('SIGINT', async () => {
+  await cleanUp();
+  process.exit(130);
+});
+```
 
 ## Safety
 
