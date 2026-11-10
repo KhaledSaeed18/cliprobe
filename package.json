@@ -1,7 +1,7 @@
 {
     "name": "cliprobe",
     "version": "0.0.1",
-    "description": "Black-box test any command-line program for terminal-edge bugs. 0.0.1 checks whether it crashes when its stdout is closed early (| head, grep -q, agents).",
+    "description": "Black-box test any command-line program for terminal-edge bugs: crashes on a closed pipe (| head), color codes leaking into pipes, broken Ctrl-C handling, and control characters from file names reaching your terminal.",
     "type": "module",
     "bin": {
         "cliprobe": "dist/cli.js"
@@ -33,7 +33,12 @@
         "black-box",
         "conformance",
         "terminal",
-        "agent-ready"
+        "agent-ready",
+        "no-color",
+        "sigint",
+        "ctrl-c",
+        "terminal-injection",
+        "pty"
     ],
     "author": {
         "name": "Khaled Saeed",

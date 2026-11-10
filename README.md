@@ -7,21 +7,34 @@ npx cliprobe -- esbuild
 ```
 
 ```
-cliprobe 0.0.1: closed-pipe check for esbuild
+cliprobe 0.1.0: closed-pipe, color, ctrl-c, control-chars checks for esbuild
 
+closed-pipe
   FAIL   esbuild --version  crashed when stdout was closed (exit 0 -> 1)
                             Error: Command failed: .../esbuild --version (at node_modules/esbuild/bin/esbuild:222:28)
   FAIL   esbuild --help     crashed when stdout was closed (exit 0 -> 1)
                             Error: Command failed: .../esbuild --help (at node_modules/esbuild/bin/esbuild:222:28)
 
-2 failed, 0 warned, 0 passed, 0 skipped
+color
+  PASS   esbuild --version  no color in a pipe or in a terminal
+  PASS   esbuild --help     colors only in a terminal, and NO_COLOR turns it off
+
+ctrl-c
+  SKIP   esbuild            needs probe args that keep it running, such as a watch or serve command
+
+control-chars
+  SKIP   esbuild            no {fixture} in the arguments; put it where the command takes a path, e.g. ls {fixture}
+
+2 failed, 0 warned, 2 passed, 2 skipped
 ```
 
 ## Why
 
 When a program's output goes into a reader that stops early (`| head`, `grep -q`, a closed agent pipe), its next write to stdout fails. A well-behaved program exits quietly. Many Node.js CLIs instead crash with `Error: write EPIPE`, a stack trace, and exit code 1. That breaks scripts running under `set -o pipefail` and confuses agents that read stderr.
 
-In a census of the 100 most-downloaded npm packages that ship a command, **8 crashed this way every time**: esbuild, browserslist, update-browserslist-db, autoprefixer, husky, tsconfck, ts-jest and rolldown. The best-known existing CLI auditor rated all 8 as passing its SIGPIPE check.
+In a census of the 100 most-downloaded npm packages that ship a command (119 commands, run offline in a throwaway container), **9 crashed this way every time**: esbuild, browserslist, update-browserslist-db, autoprefixer, husky, tsconfck, ts-jest, rolldown, and tsx on `--version`. The best-known existing CLI auditor rated the first 8 as passing its SIGPIPE check. The same census found two commands that print color codes into a pipe (`giget --help`, `tsx --help`), and no false failures: every `FAIL` reproduced by hand. (A census of `--help` and `--version` can't exercise ctrl-c or control-chars, which need a command that keeps running or takes a path; their fixtures and real-tool tests are in `test/`.)
+
+The other checks cover the rest of what goes wrong between a program and the thing reading it: color codes leaking into logs and agent transcripts, Ctrl-C that is ignored or ends in a stack trace, and file names that can send escape sequences to your terminal.
 
 ## Usage
 
