@@ -123,6 +123,17 @@ export const controlCharsCheck: Check = {
     kind: 'check',
     summary: 'prints control characters from file names raw to the terminal',
     async run(target, ctx) {
+        if (target.fixtureDir === undefined) {
+            // Nothing to plant, so nothing to run: one line instead of a skip per probe.
+            const skip: ControlCharsResult = {
+                check: 'control-chars',
+                invocation: [target.command],
+                ...judgeControlChars({ usesFixture: false }),
+                terminalRaw: [],
+                pipeRaw: [],
+            };
+            return [skip];
+        }
         const results: Result[] = [];
         for (const args of target.invocations) {
             results.push(await controlChars(target.command, args, target.fixtureDir, ctx.timeout));

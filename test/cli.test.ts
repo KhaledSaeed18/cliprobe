@@ -20,7 +20,7 @@ describe('cli', () => {
             'closed-pipe:error',
             'color:error',
             'control-chars:skip',
-            'ctrl-c:error',
+            'ctrl-c:skip',
         ]);
     });
 

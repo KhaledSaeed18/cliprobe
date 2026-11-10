@@ -66,10 +66,11 @@ describe('control-chars: fixtures', () => {
         expect(probe(lister('raw')).status).toBe(1);
     });
 
-    it('skips without {fixture}, saying how to use it', () => {
-        const { result } = probe([node, fixture('control-chars/raw'), '.']);
-        expect(result.verdict).toBe('skip');
-        expect(result.reason).toContain('ls {fixture}');
+    it('skips once without {fixture}, saying how to use it', () => {
+        const { report } = probeJson([node, fixture('control-chars/raw'), '.'], only);
+        expect(report.results).toHaveLength(1);
+        expect(first(report).verdict).toBe('skip');
+        expect(first(report).reason).toContain('ls {fixture}');
     });
 
     it('reports a missing command as could-not-run', () => {

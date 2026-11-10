@@ -88,6 +88,21 @@ export const ctrlCCheck: Check = {
     kind: 'check',
     summary: 'ignores Ctrl-C, or prints a stack trace when interrupted',
     async run(target) {
+        if (!target.explicit) {
+            // --version and --help finish at once; one line says so instead of two skips.
+            const skip: CtrlCResult = {
+                check: 'ctrl-c',
+                invocation: [target.command],
+                verdict: 'skip',
+                reason: 'needs probe args that keep it running, such as a watch or serve command',
+                sentAfterMs: null,
+                exitedAfterMs: null,
+                exitCode: null,
+                signal: null,
+                stderrAfter: '',
+            };
+            return [skip];
+        }
         const results: Result[] = [];
         for (const args of target.invocations) results.push(await ctrlC(target.command, args));
         return results;

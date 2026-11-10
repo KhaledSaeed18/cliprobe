@@ -72,12 +72,14 @@ describe('ctrl-c: fixtures', () => {
     });
 
     it('reports a missing command as could-not-run', () => {
-        expect(probe(['cliprobe-no-such-command-xyz']).result.verdict).toBe('error');
+        expect(probe(['cliprobe-no-such-command-xyz', 'watch']).result.verdict).toBe('error');
     });
 
-    it('skips --version and --help, which finish at once', () => {
+    it('skips once, without running anything, when there are no probe args', () => {
         const { report } = probeJson([node], only);
-        expect(report.results.map((r) => r.verdict)).toEqual(['skip', 'skip']);
+        expect(report.results).toHaveLength(1);
+        expect(first(report)).toMatchObject({ verdict: 'skip', invocation: [node] });
+        expect(first(report).reason).toMatch(/keep it running/);
     });
 
     it('shows the reason in human output', () => {
