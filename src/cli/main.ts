@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // cliprobe: black-box tests a command-line program for terminal-edge bugs.
 import { CHECKS, selectChecks } from '../checks/index.ts';
+import { collapseFixture, createFixture, expandFixture, usesFixture } from '../core/fixture.ts';
 import type { Result, Target } from '../core/types.ts';
 import { formatHuman } from '../report/human.ts';
 import { formatJson } from '../report/json.ts';
@@ -13,7 +14,9 @@ Usage:
   cliprobe [options] -- <command> [args...]
 
 With no args after <command>, cliprobe probes "<command> --version" and
-"<command> --help". With args, it probes exactly that invocation.
+"<command> --help". With args, it probes exactly that invocation. An argument
+containing {fixture} gets the path of a temporary directory of file names with
+control characters in them, for the control-chars check.
 
 Checks:
   closed-pipe   Runs the command with stdout already closed, as when output is
@@ -79,17 +82,28 @@ async function main(): Promise<number> {
         return 2;
     }
 
-    const target: Target = {
-        command: opts.command,
-        invocations: opts.args.length ? [opts.args] : [['--version'], ['--help']],
-    };
+    const invocations = opts.args.length ? [opts.args] : [['--version'], ['--help']];
+    const fixture = usesFixture(opts.args) ? createFixture() : undefined;
     const results: Result[] = [];
-    for (const check of checks) {
-        results.push(...(await check.run(target, { timeout: opts.timeout })));
+    try {
+        const target: Target = {
+            command: opts.command,
+            invocations: fixture
+                ? invocations.map((a) => expandFixture(a, fixture.dir))
+                : invocations,
+            ...(fixture ? { fixtureDir: fixture.dir } : {}),
+        };
+        for (const check of checks) {
+            results.push(...(await check.run(target, { timeout: opts.timeout })));
+        }
+    } finally {
+        fixture?.cleanup();
     }
+    // Report the placeholder, not a temporary path that no longer exists.
+    const report = (text: string): void => out(fixture ? collapseFixture(text, fixture) : text);
 
     if (opts.json) {
-        out(
+        report(
             formatJson(
                 VERSION,
                 opts.command,
@@ -99,7 +113,7 @@ async function main(): Promise<number> {
         );
     } else {
         const useColor = process.stdout.isTTY && !process.env['NO_COLOR'];
-        out(
+        report(
             formatHuman(
                 VERSION,
                 opts.command,

@@ -19,7 +19,10 @@ export interface Judgement {
 /** The program under test and the invocations to probe it with. */
 export interface Target {
     command: string;
+    /** Arguments for each probe, with {fixture} already replaced by `fixtureDir`. */
     invocations: string[][];
+    /** The directory of hostile file names, when the arguments asked for one. */
+    fixtureDir?: string;
 }
 
 export interface Context {
