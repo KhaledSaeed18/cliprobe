@@ -1,3 +1,4 @@
+import { safeJson } from '../core/safe.ts';
 import type { Result } from '../core/types.ts';
 
 export function formatJson(
@@ -6,5 +7,5 @@ export function formatJson(
     checks: readonly string[],
     results: readonly Result[]
 ): string {
-    return JSON.stringify({ tool: 'cliprobe', version, command, checks, results }, null, 2) + '\n';
+    return safeJson({ tool: 'cliprobe', version, command, checks, results }) + '\n';
 }
