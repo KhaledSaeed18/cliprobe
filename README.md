@@ -31,6 +31,7 @@ npx cliprobe -- <command> [args...]       # probes exactly this invocation
 npx cliprobe -- node ./dist/cli.js list   # test your own CLI before publishing
 npx cliprobe --json -- <command>          # machine-readable results
 npx cliprobe -- ls {fixture}              # {fixture}: a directory of hostile file names
+npx cliprobe --check startup,baseline -- node ./dist/cli.js   # info checks, only when named
 ```
 
 | Option            | Meaning                                                  |
@@ -45,7 +46,9 @@ Exit codes: `0` no failures, `1` a check failed, `2` usage error or the command 
 
 ## Checks
 
-**closed-pipe** (0.0.1). cliprobe runs the command twice: once normally, then with stdout set to a pipe whose reading end is already closed, so the first write fails every time, even for fast native programs. Results:
+A default run does the four checks below: closed-pipe, color, ctrl-c and control-chars. Each one reports evidence, never a score. Two info checks, startup and baseline, run only when you name them with `--check`.
+
+**closed-pipe**. cliprobe runs the command twice: once normally, then with stdout set to a pipe whose reading end is already closed, so the first write fails every time, even for fast native programs. Results:
 
 | Verdict | Meaning                                                                        |
 | ------- | ------------------------------------------------------------------------------ |
@@ -87,7 +90,13 @@ A stack trace printed before the Ctrl-C doesn't count. Python's default `Keyboar
 
 Only the terminal run is judged. Into a pipe, `ls` and `find` print names exactly, by design; that is recorded in the JSON (`pipeRaw`) but doesn't affect the verdict. BSD `find` on macOS fails this check: unlike GNU `find`, it prints names raw even to a terminal.
 
-Planned next: startup time.
+### Info checks
+
+These report an observation with the verdict `INFO` and never fail. They run only when named, for example `--check startup,baseline`. With probe args, those args are treated as the program: `npx cliprobe --check baseline -- node ./dist/cli.js` probes `node ./dist/cli.js --version`, and so on.
+
+**startup**. The median wall time over 5 runs, after one warm-up, of `<command> --version`, or of the probe exactly as given. It's skipped if that invocation exits non-zero.
+
+**baseline**. Appends `--version`, `--help` and `--cliprobe-unknown-flag` to the probe and describes what scripts and agents rely on: one version line on stdout, help on stdout with exit 0, and a non-zero exit with the message on stderr for a flag the program doesn't know. A program that ignores unknown flags will run its default action (it's stopped after 5 seconds), which is why baseline never runs unless you ask for it.
 
 ## Fixing a failure in a Node.js CLI
 
@@ -130,7 +139,7 @@ Also escape U+2028, U+2029 and the bidi controls (U+202A to U+202E, U+2066 to U+
 
 ## Safety
 
-cliprobe runs the target in your current directory without a shell, with stdin closed, a temporary `HOME`, and a minimal environment (no tokens from your shell). It still executes the program, so only probe programs you trust. macOS and Linux only for now.
+cliprobe runs the target in your current directory without a shell, with stdin closed, a temporary `HOME`, and a minimal environment (no tokens from your shell). It still executes the program, so only probe programs you trust. By default cliprobe passes only the arguments you give, or `--version` and `--help`; only the baseline check, when you name it, adds an unknown flag. It kills each run's whole process group on timeout, including under a pseudo-terminal. macOS and Linux only for now.
 
 ## License
 
