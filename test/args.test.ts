@@ -30,6 +30,7 @@ describe('selectChecks', () => {
             'closed-pipe',
             'color',
             'ctrl-c',
+            'control-chars',
         ]);
     });
 

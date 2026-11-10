@@ -30,6 +30,11 @@ Checks:
                 running 3 s later or prints a stack trace; warns if it exits 0.
                 Skipped when the command finishes first, so probe a command
                 that keeps running (a watcher, a server, a long task).
+  control-chars Runs the command under a terminal with {fixture} replaced by a
+                directory of file names holding escape sequences, a carriage
+                return, a newline and more. Fails if an escape sequence reaches
+                the terminal unescaped; warns for the others. Skipped without
+                {fixture}, e.g. cliprobe -- ls {fixture}
 
 Options:
   --check <name>     Run only this check; repeat it or use commas for several
@@ -124,7 +129,9 @@ async function main(): Promise<number> {
         );
     }
     if (results.some((r) => r.verdict === 'fail')) return 1;
-    if (results.every((r) => r.verdict === 'error')) return 2;
+    // Could not run, and no check got far enough to judge anything.
+    const judged = results.some((r) => r.verdict !== 'error' && r.verdict !== 'skip');
+    if (!judged && results.some((r) => r.verdict === 'error')) return 2;
     return 0;
 }
 

@@ -1,10 +1,16 @@
 import type { Check } from '../core/types.ts';
 import { closedPipeCheck } from './closed-pipe.ts';
 import { colorCheck } from './color.ts';
+import { controlCharsCheck } from './control-chars.ts';
 import { ctrlCCheck } from './ctrl-c.ts';
 
 /** Every check, in the order they run and are reported. */
-export const CHECKS: readonly Check[] = [closedPipeCheck, colorCheck, ctrlCCheck];
+export const CHECKS: readonly Check[] = [
+    closedPipeCheck,
+    colorCheck,
+    ctrlCCheck,
+    controlCharsCheck,
+];
 
 export interface Selection {
     checks: Check[];
