@@ -30,6 +30,7 @@ npx cliprobe -- <command>                 # probes "<command> --version" and "<c
 npx cliprobe -- <command> [args...]       # probes exactly this invocation
 npx cliprobe -- node ./dist/cli.js list   # test your own CLI before publishing
 npx cliprobe --json -- <command>          # machine-readable results
+npx cliprobe -- ls {fixture}              # {fixture}: a directory of hostile file names
 ```
 
 | Option            | Meaning                                                  |
@@ -75,7 +76,18 @@ Many classic tools (git, BSD `ls` and `grep`) color correctly but don't implemen
 
 A stack trace printed before the Ctrl-C doesn't count. Python's default `KeyboardInterrupt` traceback is the classic failure here, so `python3 -c 'import time; time.sleep(30)'` fails.
 
-Planned next: control characters in output, and startup time.
+**control-chars**. Put `{fixture}` in the arguments where your command takes a path, for example `npx cliprobe -- ls {fixture}` or `npx cliprobe -- node ./dist/cli.js scan --dir={fixture}`. cliprobe replaces it with a temporary directory of file names holding escape sequences (one sets the window title, one clears the screen), a C1 control character, a carriage return, a newline and a bidirectional override. It runs the command under a terminal and looks for those characters, unescaped, in what reaches it. A file name that can clear someone's screen or retitle their window is a terminal injection, the same bug class as the `ls`/`find` escaping that GNU coreutils added years ago. Reports show `{fixture}`, never the temporary path, and the directory is removed afterwards. Results:
+
+| Verdict | Meaning                                                                                                     |
+| ------- | ----------------------------------------------------------------------------------------------------------- |
+| `PASS`  | Escaped or replaced the control characters (a raw bidi override is mentioned, not judged)                   |
+| `FAIL`  | Sent an escape sequence from a file name to the terminal unescaped                                          |
+| `WARN`  | Printed a C1 control, carriage return or newline from a file name unescaped, which can hide or forge output |
+| `SKIP`  | No `{fixture}` in the arguments, the command never printed the file names, or no usable `script`            |
+
+Only the terminal run is judged. Into a pipe, `ls` and `find` print names exactly, by design; that is recorded in the JSON (`pipeRaw`) but doesn't affect the verdict. BSD `find` on macOS fails this check: unlike GNU `find`, it prints names raw even to a terminal.
+
+Planned next: startup time.
 
 ## Fixing a failure in a Node.js CLI
 
@@ -104,6 +116,17 @@ process.once('SIGINT', async () => {
   process.exit(130);
 });
 ```
+
+**control-chars:** escape names (and any other text you didn't write) before printing them for a person. `JSON.stringify` alone isn't enough: it leaves C1 controls and bidi overrides raw.
+
+```js
+const shown = name.replace(
+  /[\x00-\x1f\x7f-\x9f]/g,
+  (c) => `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`
+);
+```
+
+Also escape U+2028, U+2029 and the bidi controls (U+202A to U+202E, U+2066 to U+2069) if names may come from untrusted sources.
 
 ## Safety
 
