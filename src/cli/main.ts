@@ -27,6 +27,9 @@ Checks:
   color         Runs the command into a pipe, then under a terminal, then under
                 a terminal with NO_COLOR=1. Fails if color codes reach a pipe;
                 warns if color goes to a piped stderr or NO_COLOR is ignored.
+  pipe-escapes  Runs the command into a pipe and warns if cursor movement,
+                erase, hyperlink, window title or carriage-return redraw
+                codes (spinners, progress bars) reach stdout or stderr.
   ctrl-c        Sends Ctrl-C (SIGINT) after 1 s. Fails if the command is still
                 running 3 s later or prints a stack trace; warns if it exits 0.
                 Skipped when the command finishes first, so probe a command
