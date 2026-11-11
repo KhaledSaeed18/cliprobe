@@ -97,12 +97,12 @@ A default run does the four checks below: closed-pipe, color, ctrl-c and control
 
 **color**. cliprobe runs the command up to three times: into a pipe, under a real terminal (a pseudo-terminal through the system's `script` command, 80×24), and under a terminal with `NO_COLOR=1`. Every run gets `TERM=xterm-256color` and no `CI` variable, so a program can't pass just because the terminal type looks colorless, and color libraries that force color in CI don't fail it. Color codes in piped output end up in log files and agent transcripts as `\x1b[31m` noise. Results:
 
-| Verdict | Meaning                                                                                      |
-| ------- | -------------------------------------------------------------------------------------------- |
-| `PASS`  | No color in a pipe; in a terminal, either no color at all or color that `NO_COLOR` turns off |
-| `FAIL`  | Printed color or style codes (bold counts, a bare reset doesn't) to stdout in a pipe         |
-| `WARN`  | Printed color to stderr in a pipe, or kept printing color under `NO_COLOR`                   |
-| `SKIP`  | Printed nothing, waited for input in a terminal, or no usable `script` (BusyBox)             |
+| Verdict | Meaning                                                                                                        |
+| ------- | -------------------------------------------------------------------------------------------------------------- |
+| `PASS`  | No color in a pipe; in a terminal, either no color at all or color that `NO_COLOR` turns off                   |
+| `FAIL`  | Printed color or style codes (bold counts, a bare reset doesn't) to stdout in a pipe                           |
+| `WARN`  | Printed color to stderr in a pipe, or kept printing color under `NO_COLOR`                                     |
+| `SKIP`  | Printed nothing, waited for input in a terminal, or no `script` command (on Alpine, install `util-linux-misc`) |
 
 Many classic tools (git, BSD `ls` and `grep`) color correctly but don't implement [`NO_COLOR`](https://no-color.org), so they get a `WARN`, never a `FAIL`. Probe a command that prints color in normal use: almost no CLI colors its `--help`.
 

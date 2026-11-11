@@ -1,8 +1,9 @@
 import { execFileSync } from 'node:child_process';
+import { dirname } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { describe, expect, it } from 'vitest';
 import { cleanPtyOutput, ptyArgs, ptySupport, runPty, shellQuote } from '../src/core/pty.ts';
-import { fixture } from './helpers/cli.ts';
+import { cliprobe, fixture } from './helpers/cli.ts';
 
 const node = process.execPath;
 
@@ -154,5 +155,23 @@ describe('runPty', () => {
     it('returns a non-zero exit for a missing command instead of throwing', async () => {
         const r = await runPty('/no/such/command', [], { timeout: 10_000 });
         expect(r.exitCode).not.toBe(0);
+    });
+});
+
+describe('without script(1)', () => {
+    it('skips the terminal checks and says what to install', () => {
+        // A PATH holding only Node's own folder, so script(1) can't be found.
+        const env = { PATH: dirname(node) };
+        const r = cliprobe(
+            ['--json', '--check', 'color', '--', node, fixture('color/plain')],
+            undefined,
+            env
+        );
+        const result = (JSON.parse(r.stdout) as { results: { verdict: string; reason: string }[] })
+            .results[0];
+        expect(result?.verdict).toBe('skip');
+        expect(result?.reason).toMatch(
+            process.platform === 'darwin' ? /script\(1\) did not run/ : /Alpine: util-linux-misc/
+        );
     });
 });
