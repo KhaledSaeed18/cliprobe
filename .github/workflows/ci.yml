@@ -50,3 +50,21 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
+
+  alpine:
+    name: Test (Alpine, Node 22)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Runs the suite inside node:22-alpine (musl, BusyBox) rather than as a job
+      # container, where the runner's own Node and JavaScript actions don't run.
+      # script(1) comes from util-linux-misc; GNU tools match the real-tool tests.
+      - name: Run the tests in node:22-alpine
+        run: |
+          docker run --rm -v "$PWD:/src:ro" node:22-alpine sh -euc '
+            apk add --no-cache util-linux-misc coreutils findutils procps grep git
+            npm install --global "$(node -p "require(\"/src/package.json\").packageManager")"
+            cp -r /src /work && cd /work
+            pnpm install --frozen-lockfile
+            pnpm test
+          '
