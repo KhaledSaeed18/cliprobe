@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.1.0...v0.2.0) (2026-11-11)
+
+### Features
+
+* **cli:** choose the output format with --format ([35ae9e6](https://github.com/KhaledSaeed18/cliprobe/commit/35ae9e6b0f1d713a118c93572beec16902743728))
+* **cli:** write the report to a file with --output-file ([1fd4a23](https://github.com/KhaledSaeed18/cliprobe/commit/1fd4a238acc7d636e93c2dece214926ce015cbd4))
+* **report:** add a JUnit XML format for CI test reports ([e4d384c](https://github.com/KhaledSaeed18/cliprobe/commit/e4d384c6b4bf5a07b1260e92cf2e418d44cb7c53))
+* **report:** add a Markdown format for CI summaries and PR comments ([263c564](https://github.com/KhaledSaeed18/cliprobe/commit/263c56425b7adbd4ed7d2872b90549bf30e36c44))
+
 ## [0.1.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.0.1...v0.1.0) (2026-11-11)
 
 ### Features
