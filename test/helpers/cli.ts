@@ -14,8 +14,12 @@ export interface CliResult {
 }
 
 /** Runs the built cliprobe with the given arguments. */
-export function cliprobe(args: readonly string[], cwd?: string): CliResult {
-    const r = spawnSync(process.execPath, [BIN, ...args], { encoding: 'utf8', cwd });
+export function cliprobe(
+    args: readonly string[],
+    cwd?: string,
+    env?: NodeJS.ProcessEnv
+): CliResult {
+    const r = spawnSync(process.execPath, [BIN, ...args], { encoding: 'utf8', cwd, env });
     return { status: r.status, stdout: r.stdout, stderr: r.stderr };
 }
 
