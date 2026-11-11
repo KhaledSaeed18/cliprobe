@@ -47,14 +47,15 @@ npx cliprobe -- ls {fixture}              # {fixture}: a directory of hostile fi
 npx cliprobe --check startup,baseline -- node ./dist/cli.js   # info checks, only when named
 ```
 
-| Option            | Meaning                                                                                                                        |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `--check <name>`  | Run only this check; repeat it or use commas for several                                                                       |
-| `--format <name>` | Output format: `human` (default), `json`, `markdown` (a GitHub job summary or PR comment) or `junit` (XML for CI test reports) |
-| `--json`          | Same as `--format json`                                                                                                        |
-| `--timeout <ms>`  | Kill a probe after this long (default 15000)                                                                                   |
-| `-h`, `--help`    | Show help                                                                                                                      |
-| `-v`, `--version` | Show the version                                                                                                               |
+| Option                       | Meaning                                                                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `--check <name>`             | Run only this check; repeat it or use commas for several                                                                       |
+| `--format <name>`            | Output format: `human` (default), `json`, `markdown` (a GitHub job summary or PR comment) or `junit` (XML for CI test reports) |
+| `--json`                     | Same as `--format json`                                                                                                        |
+| `-o`, `--output-file <path>` | Write the `--format` report to a file (atomically, creating parent folders); the human report still prints                     |
+| `--timeout <ms>`             | Kill a probe after this long (default 15000)                                                                                   |
+| `-h`, `--help`               | Show help                                                                                                                      |
+| `-v`, `--version`            | Show the version                                                                                                               |
 
 Exit codes: `0` no failures, `1` a check failed, `2` usage error or the command could not run. That makes it usable as a CI gate.
 
