@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.2.0...v0.3.0) (2026-11-11)
+
+### Features
+
+* add the pipe-escapes check ([e6fbf46](https://github.com/KhaledSaeed18/cliprobe/commit/e6fbf4602878e82374c2ada4994dccacb9c17e01))
+* **core:** detect terminal control codes other than color ([dd34544](https://github.com/KhaledSaeed18/cliprobe/commit/dd345440cc89f2f1774999d222d684d8eff63a42))
+
+### Bug Fixes
+
+* **core:** name the package that provides script(1) on Alpine ([c07490d](https://github.com/KhaledSaeed18/cliprobe/commit/c07490ddefb78f12b7bc0c92d8b240b8fdd0cf4b))
+
 ## [0.2.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.1.0...v0.2.0) (2026-11-11)
 
 ### Features
