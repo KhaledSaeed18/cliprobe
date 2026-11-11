@@ -15,8 +15,10 @@ interface CtrlCJson {
     signal: string | null;
 }
 
-function probe(command: readonly string[]): { status: number | null; result: CtrlCJson } {
-    const { status, report } = probeJson(command, only);
+async function probe(
+    command: readonly string[]
+): Promise<{ status: number | null; result: CtrlCJson }> {
+    const { status, report } = await probeJson(command, only);
     return { status, result: first(report) as unknown as CtrlCJson };
 }
 
@@ -34,21 +36,23 @@ describe('ctrl-c: fixtures', () => {
         ['throws', 'fail', /stack trace/],
         ['python-trace', 'fail', /stack trace/],
         ['quick', 'skip', /finished in \d+ ms, before Ctrl-C/],
-    ])('%s -> %s', (name, verdict, reason) => {
-        const { result } = probe(ctrlFixture(name));
+    ])('%s -> %s', async (name, verdict, reason) => {
+        const { result } = await probe(ctrlFixture(name));
         expect(result.verdict).toBe(verdict);
         expect(result.reason).toMatch(reason);
     });
 
-    it('quotes the error and the frame in the program as evidence', () => {
-        expect(probe(ctrlFixture('throws')).result.evidence).toMatch(
+    it('quotes the error and the frame in the program as evidence', async () => {
+        expect((await probe(ctrlFixture('throws'))).result.evidence).toMatch(
             /^Error: interrupted \(at .*throws\.mjs:\d+:\d+\)$/
         );
-        expect(probe(ctrlFixture('python-trace')).result.evidence).toBe('KeyboardInterrupt');
+        expect((await probe(ctrlFixture('python-trace'))).result.evidence).toBe(
+            'KeyboardInterrupt'
+        );
     });
 
-    it('records when Ctrl-C was sent and how long the exit took', () => {
-        const { result } = probe(ctrlFixture('slow'));
+    it('records when Ctrl-C was sent and how long the exit took', async () => {
+        const { result } = await probe(ctrlFixture('slow'));
         expect(result.verdict).toBe('pass');
         expect(result.sentAfterMs).toBeGreaterThanOrEqual(1000);
         expect(result.exitedAfterMs).toBeGreaterThanOrEqual(1400);
@@ -56,34 +60,36 @@ describe('ctrl-c: fixtures', () => {
         expect(result.exitCode).toBe(130);
     });
 
-    it('leaves no process behind after a program that ignores Ctrl-C', () => {
+    it('leaves no process behind after a program that ignores Ctrl-C', async () => {
         const [, script] = ctrlFixture('ignores');
         // Only processes that are the fixture itself, not shells that mention its path.
         const running = (): string[] =>
             execFileSync('ps', ['-axo', 'args='], { encoding: 'utf8' })
                 .split('\n')
                 .filter((line) => line.startsWith(`${node} ${script}`));
-        probe(ctrlFixture('ignores'));
+        await probe(ctrlFixture('ignores'));
         expect(running()).toEqual([]);
     });
 
-    it('exits 1 when it fails', () => {
-        expect(probe(ctrlFixture('ignores')).status).toBe(1);
+    it('exits 1 when it fails', async () => {
+        expect((await probe(ctrlFixture('ignores'))).status).toBe(1);
     });
 
-    it('reports a missing command as could-not-run', () => {
-        expect(probe(['cliprobe-no-such-command-xyz', 'watch']).result.verdict).toBe('error');
+    it('reports a missing command as could-not-run', async () => {
+        expect((await probe(['cliprobe-no-such-command-xyz', 'watch'])).result.verdict).toBe(
+            'error'
+        );
     });
 
-    it('skips once, without running anything, when there are no probe args', () => {
-        const { report } = probeJson([node], only);
+    it('skips once, without running anything, when there are no probe args', async () => {
+        const { report } = await probeJson([node], only);
         expect(report.results).toHaveLength(1);
         expect(first(report)).toMatchObject({ verdict: 'skip', invocation: [node] });
         expect(first(report).reason).toMatch(/keep it running/);
     });
 
-    it('shows the reason in human output', () => {
-        const r = cliprobe(['--check', 'ctrl-c', '--', ...ctrlFixture('ignores')]);
+    it('shows the reason in human output', async () => {
+        const r = await cliprobe(['--check', 'ctrl-c', '--', ...ctrlFixture('ignores')]);
         expect(r.stdout).toMatch(/FAIL .*ignored Ctrl-C/);
     });
 });
@@ -93,8 +99,8 @@ describe('ctrl-c: real tools', () => {
         ['sleep', ['sleep', '30']],
         ['tail -f', ['tail', '-f', '/dev/null']],
         ['node with a timer', [node, '-e', 'setInterval(() => {}, 1000)']],
-    ])('%s passes', (_name, command) => {
-        expect(probe(command).result.verdict).toBe('pass');
+    ])('%s passes', async (_name, command) => {
+        expect((await probe(command)).result.verdict).toBe('pass');
     });
 
     const hasPython = (() => {
@@ -106,9 +112,12 @@ describe('ctrl-c: real tools', () => {
         }
     })();
 
-    it.skipIf(!hasPython)('python3 sleeping fails with its KeyboardInterrupt traceback', () => {
-        const { result } = probe(['python3', '-c', 'import time; time.sleep(30)']);
-        expect(result.verdict).toBe('fail');
-        expect(result.evidence).toBe('KeyboardInterrupt');
-    });
+    it.skipIf(!hasPython)(
+        'python3 sleeping fails with its KeyboardInterrupt traceback',
+        async () => {
+            const { result } = await probe(['python3', '-c', 'import time; time.sleep(30)']);
+            expect(result.verdict).toBe('fail');
+            expect(result.evidence).toBe('KeyboardInterrupt');
+        }
+    );
 });

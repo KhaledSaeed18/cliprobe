@@ -86,8 +86,8 @@ describe('formatMarkdown', () => {
         expect(rows(out).map((cells) => cells[1])).toEqual(['<strong>FAIL</strong>', 'SKIP']);
     });
 
-    it('is what --format markdown prints, with the usual exit code', () => {
-        const r = cliprobe([
+    it('is what --format markdown prints, with the usual exit code', async () => {
+        const r = await cliprobe([
             '--format',
             'markdown',
             '--check',

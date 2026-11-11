@@ -113,8 +113,8 @@ describe('formatJunit', () => {
         expect(testcase?.failure?.['#text']).toBe('</failure><injected/>\\x1b[2J');
     });
 
-    it('is what --format junit prints, with the usual exit code', () => {
-        const r = cliprobe([
+    it('is what --format junit prints, with the usual exit code', async () => {
+        const r = await cliprobe([
             '--format',
             'junit',
             '--check',

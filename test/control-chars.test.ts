@@ -12,8 +12,10 @@ interface ControlCharsJson {
     pipeRaw: string[];
 }
 
-function probe(command: readonly string[]): { status: number | null; result: ControlCharsJson } {
-    const { status, report } = probeJson(command, only);
+async function probe(
+    command: readonly string[]
+): Promise<{ status: number | null; result: ControlCharsJson }> {
+    const { status, report } = await probeJson(command, only);
     return { status, result: first(report) as unknown as ControlCharsJson };
 }
 
@@ -42,14 +44,14 @@ describe('control-chars: fixtures', () => {
         ['json', 'warn', /a C1 control character from file names unescaped/],
         ['esc-only', 'warn', /C1 control character, a carriage return and a newline/],
         ['no-names', 'skip', /did not print the file names in \{fixture\}/],
-    ])('%s -> %s', (name, verdict, reason) => {
-        const { result } = probe(lister(name));
+    ])('%s -> %s', async (name, verdict, reason) => {
+        const { result } = await probe(lister(name));
         expect(result.verdict).toBe(verdict);
         expect(result.reason).toMatch(reason);
     });
 
-    it('lists what reached the terminal and, as data only, what reached a pipe', () => {
-        expect(probe(lister('raw')).result.terminalRaw).toEqual([
+    it('lists what reached the terminal and, as data only, what reached a pipe', async () => {
+        expect((await probe(lister('raw'))).result.terminalRaw).toEqual([
             'osc',
             'csi',
             'c1',
@@ -57,44 +59,46 @@ describe('control-chars: fixtures', () => {
             'newline',
             'bidi',
         ]);
-        const ttyOnly = probe(lister('tty-only')).result;
+        const ttyOnly = (await probe(lister('tty-only'))).result;
         expect(ttyOnly.terminalRaw).toEqual([]);
         expect(ttyOnly.pipeRaw).toEqual(['osc', 'csi', 'c1', 'cr', 'newline', 'bidi']);
     });
 
-    it('exits 1 on a fail', () => {
-        expect(probe(lister('raw')).status).toBe(1);
+    it('exits 1 on a fail', async () => {
+        expect((await probe(lister('raw'))).status).toBe(1);
     });
 
-    it('skips once without {fixture}, saying how to use it', () => {
-        const { report } = probeJson([node, fixture('control-chars/raw'), '.'], only);
+    it('skips once without {fixture}, saying how to use it', async () => {
+        const { report } = await probeJson([node, fixture('control-chars/raw'), '.'], only);
         expect(report.results).toHaveLength(1);
         expect(first(report).verdict).toBe('skip');
         expect(first(report).reason).toContain('ls {fixture}');
     });
 
-    it('reports a missing command as could-not-run', () => {
-        expect(probe(['cliprobe-no-such-command-xyz', '{fixture}']).result.verdict).toBe('error');
+    it('reports a missing command as could-not-run', async () => {
+        expect((await probe(['cliprobe-no-such-command-xyz', '{fixture}'])).result.verdict).toBe(
+            'error'
+        );
     });
 
-    it('keeps every hostile character out of its own human and JSON output', () => {
-        const human = cliprobe(['--check', 'control-chars', '--', ...lister('raw')]);
+    it('keeps every hostile character out of its own human and JSON output', async () => {
+        const human = await cliprobe(['--check', 'control-chars', '--', ...lister('raw')]);
         expect(human.stdout).toContain('file names printed raw: title-\\x1b]0;cliprobe\\x07.txt');
         expect(rawControls(human.stdout)).toEqual([]);
-        const json = cliprobe(['--json', '--check', 'control-chars', '--', ...lister('raw')]);
+        const json = await cliprobe(['--json', '--check', 'control-chars', '--', ...lister('raw')]);
         expect(rawControls(json.stdout)).toEqual([]);
         expect(json.stdout).toContain('{fixture}');
     });
 });
 
 describe('control-chars: real tools', () => {
-    it('ls escapes names on a terminal', () => {
-        expect(probe(['ls', '{fixture}']).result.verdict).toBe('pass');
+    it('ls escapes names on a terminal', async () => {
+        expect((await probe(['ls', '{fixture}'])).result.verdict).toBe('pass');
     });
 
     // GNU find escapes on a terminal; BSD find (macOS) prints names raw, a true finding.
-    it(`find ${process.platform === 'darwin' ? 'fails (BSD)' : 'passes (GNU)'}`, () => {
+    it(`find ${process.platform === 'darwin' ? 'fails (BSD)' : 'passes (GNU)'}`, async () => {
         const expected = process.platform === 'darwin' ? 'fail' : 'pass';
-        expect(probe(['find', '{fixture}']).result.verdict).toBe(expected);
+        expect((await probe(['find', '{fixture}'])).result.verdict).toBe(expected);
     });
 });
