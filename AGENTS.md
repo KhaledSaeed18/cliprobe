@@ -43,7 +43,7 @@ Run `pnpm check` before pushing.
 Every change, whether a feature, a fix or a refactor, lands with all related material updated **in the same branch**. Nothing ships with docs that describe the old behavior. Before pushing, check each item that applies:
 
 - [ ] `src/cli/help.ts`: the check list, options and their descriptions
-- [ ] `README.md`: the intro example, the "Why" numbers, the usage block, the options table, the count of default checks ("five checks"), each check's section and verdict table, "In CI", "Fixing a failure", and "Safety"
+- [ ] `README.md`: the intro example, the "Why" numbers, the usage block, the options table, the count of default checks (now "six checks"), each check's section and verdict table, "In CI", "Fixing a failure", and "Safety"
 - [ ] `AGENTS.md`: this file, when the layout, commands, rules or workflow change
 - [ ] Tests and fixtures: pass and fail fixtures for each behavior, real tools that must not fail, and the black-box suite in `test/bin.test.ts`
 - [ ] `package.json` `description` and `keywords`, when the scope changes
