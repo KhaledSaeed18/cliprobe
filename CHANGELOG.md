@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.3.0...v0.4.0) (2026-11-11)
+
+### Features
+
+* add the stdin check ([f1fa667](https://github.com/KhaledSaeed18/cliprobe/commit/f1fa667811826f1113cbba44981a6df68d580290))
+* **core:** run a program with stdin as an open or closing pipe ([d4c0a8d](https://github.com/KhaledSaeed18/cliprobe/commit/d4c0a8dea8200157dd986d40a5310c0702fcaa80))
+
 ## [0.3.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.2.0...v0.3.0) (2026-11-11)
 
 ### Features
