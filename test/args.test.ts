@@ -48,3 +48,26 @@ describe('selectChecks', () => {
         expect(selectChecks(['nope', 'closed-pipe', 'nope']).unknown).toEqual(['nope']);
     });
 });
+
+describe('parseArgs --format', () => {
+    it('defaults to human', () => {
+        expect(parseArgs(['node']).format).toBe('human');
+    });
+
+    it('takes a format as the next argument or after =', () => {
+        expect(parseArgs(['--format', 'json', 'node']).format).toBe('json');
+        expect(parseArgs(['--format=json', 'node']).format).toBe('json');
+    });
+
+    it('treats --json as --format json, and lets the last one win', () => {
+        expect(parseArgs(['--json', 'node']).format).toBe('json');
+        expect(parseArgs(['--json', '--format', 'human', 'node']).format).toBe('human');
+    });
+
+    it('rejects an unknown or missing format, naming the valid ones', () => {
+        expect(() => parseArgs(['--format', 'xml', 'node'])).toThrow(
+            /one of human, json, got "xml"/
+        );
+        expect(() => parseArgs(['--format'])).toThrow(UsageError);
+    });
+});
