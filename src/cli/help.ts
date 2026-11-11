@@ -21,6 +21,10 @@ Checks:
   pipe-escapes  Runs the command into a pipe and warns if cursor movement,
                 erase, hyperlink, window title or carriage-return redraw
                 codes (spinners, progress bars) reach stdout or stderr.
+  stdin         Runs the command with stdin as an open pipe nobody writes to,
+                as agents and CI runners often leave it. Fails if --version or
+                --help waits for input; for your own probes, warns if it
+                prompts and skips if it reads stdin like a filter.
   ctrl-c        Sends Ctrl-C (SIGINT) after 1 s. Fails if the command is still
                 running 3 s later or prints a stack trace; warns if it exits 0.
                 Skipped when the command finishes first, so probe a command

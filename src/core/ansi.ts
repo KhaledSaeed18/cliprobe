@@ -122,3 +122,11 @@ export function findControls(text: string): ControlHit[] {
     }
     return hits.sort((a, b) => a.index - b.index).map((h) => h.hit);
 }
+
+// oxlint-disable-next-line no-control-regex -- matching terminal control codes is the point
+const ANY_ESCAPE = /\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g;
+
+/** The text with CSI and OSC escape sequences (color, cursor, links, titles) removed. */
+export function stripEscapes(text: string): string {
+    return text.replace(ANY_ESCAPE, '');
+}
