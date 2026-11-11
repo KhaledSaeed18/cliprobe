@@ -67,9 +67,9 @@ describe('writeReportFile', () => {
 });
 
 describe('cliprobe --output-file', () => {
-    it('writes the chosen format to the file and the human report to stdout, keeping the exit code', () => {
+    it('writes the chosen format to the file and the human report to stdout, keeping the exit code', async () => {
         const path = join(scratch, 'ci', 'junit.xml');
-        const r = cliprobe([
+        const r = await cliprobe([
             '--format',
             'junit',
             '-o',
@@ -87,16 +87,16 @@ describe('cliprobe --output-file', () => {
         expect(xml).toContain('<failure message="crashed when stdout was closed');
     });
 
-    it('writes plain text, never colors, when the format is human', () => {
+    it('writes plain text, never colors, when the format is human', async () => {
         const path = join(scratch, 'human.txt');
-        cliprobe(['-o', path, '--check', 'closed-pipe', '--', 'printf', 'x']);
+        await cliprobe(['-o', path, '--check', 'closed-pipe', '--', 'printf', 'x']);
         expect(readFileSync(path, 'utf8')).toMatch(/^cliprobe .*\n\n {2}PASS /);
         expect(readFileSync(path, 'utf8')).not.toContain('\u001b');
     });
 
-    it('shows {fixture}, not the temporary path, in the file', () => {
+    it('shows {fixture}, not the temporary path, in the file', async () => {
         const path = join(scratch, 'fixture.md');
-        cliprobe([
+        await cliprobe([
             '--format',
             'markdown',
             '-o',
@@ -112,10 +112,10 @@ describe('cliprobe --output-file', () => {
         expect(text).not.toMatch(/cliprobe-fixture-/);
     });
 
-    it('exits 2 with a message when the file cannot be written', () => {
+    it('exits 2 with a message when the file cannot be written', async () => {
         const blocker = join(scratch, 'not-a-dir');
         writeFileSync(blocker, '');
-        const r = cliprobe([
+        const r = await cliprobe([
             '-o',
             join(blocker, 'report.json'),
             '--format',

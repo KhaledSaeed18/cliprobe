@@ -47,13 +47,16 @@ describe('placeholder', () => {
         );
     });
 
-    it('reaches the program as a real directory that is gone afterwards, and reports as {fixture}', () => {
+    it('reaches the program as a real directory that is gone afterwards, and reports as {fixture}', async () => {
         const scratch = mkdtempSync(join(tmpdir(), 'cliprobe-test-'));
         onTestFinished(() => rmSync(scratch, { recursive: true, force: true }));
         const out = join(scratch, 'arg');
-        const { report } = probeJson([process.execPath, fixture('record-arg'), '{fixture}', out], {
-            checks: ['closed-pipe'],
-        });
+        const { report } = await probeJson(
+            [process.execPath, fixture('record-arg'), '{fixture}', out],
+            {
+                checks: ['closed-pipe'],
+            }
+        );
         const seen = readFileSync(out, 'utf8');
         expect(seen).toMatch(/cliprobe-fixture-/);
         expect(existsSync(seen)).toBe(false);

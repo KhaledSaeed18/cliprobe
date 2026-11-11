@@ -13,8 +13,8 @@ interface StartupJson {
     medianMs: number | null;
 }
 
-const probe = (command: readonly string[]): StartupJson =>
-    first(probeJson(command, only).report) as unknown as StartupJson;
+const probe = async (command: readonly string[]): Promise<StartupJson> =>
+    first((await probeJson(command, only)).report) as unknown as StartupJson;
 
 const slow = [node, fixture('startup/slow-version'), '--version'];
 
@@ -26,8 +26,8 @@ describe('median', () => {
 });
 
 describe('startup', () => {
-    it('reports the median of 5 timed --version runs as info', () => {
-        const r = probe(slow);
+    it('reports the median of 5 timed --version runs as info', async () => {
+        const r = await probe(slow);
         expect(r.verdict).toBe('info');
         expect(r.invocation).toEqual(slow);
         expect(r.runsMs).toHaveLength(5);
@@ -36,33 +36,33 @@ describe('startup', () => {
         expect(r.reason).toMatch(/^median \d+ ms over 5 runs \(min \d+, max \d+\)$/);
     });
 
-    it('times "<command> --version" when no probe args are given', () => {
-        expect(probe([node]).invocation).toEqual([node, '--version']);
+    it('times "<command> --version" when no probe args are given', async () => {
+        expect((await probe([node])).invocation).toEqual([node, '--version']);
     });
 
-    it('skips when --version fails', () => {
-        const r = probe([node, fixture('startup/version-fails'), '--version']);
+    it('skips when --version fails', async () => {
+        const r = await probe([node, fixture('startup/version-fails'), '--version']);
         expect(r.verdict).toBe('skip');
         expect(r.reason).toContain('exited 1');
     });
 
-    it('reports a missing command as could-not-run, with exit 2', () => {
-        const { status, report } = probeJson(['cliprobe-no-such-command-xyz'], only);
+    it('reports a missing command as could-not-run, with exit 2', async () => {
+        const { status, report } = await probeJson(['cliprobe-no-such-command-xyz'], only);
         expect(first(report).verdict).toBe('error');
         expect(status).toBe(2);
     });
 
-    it('never fails, so the exit code stays 0', () => {
-        expect(probeJson(slow, only).status).toBe(0);
+    it('never fails, so the exit code stays 0', async () => {
+        expect((await probeJson(slow, only)).status).toBe(0);
     });
 
-    it('does not run unless named', () => {
-        const r = cliprobe(['--json', '--', 'printf', 'x']);
+    it('does not run unless named', async () => {
+        const r = await cliprobe(['--json', '--', 'printf', 'x']);
         expect((JSON.parse(r.stdout) as { checks: string[] }).checks).not.toContain('startup');
     });
 
-    it('counts info results in the human summary', () => {
-        const r = cliprobe(['--check', 'startup', '--', ...slow]);
+    it('counts info results in the human summary', async () => {
+        const r = await cliprobe(['--check', 'startup', '--', ...slow]);
         expect(r.stdout).toMatch(/INFO .*median \d+ ms/);
         expect(r.stdout).toMatch(/, 1 info$/m);
     });

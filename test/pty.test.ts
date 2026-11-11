@@ -159,10 +159,10 @@ describe('runPty', () => {
 });
 
 describe('without script(1)', () => {
-    it('skips the terminal checks and says what to install', () => {
+    it('skips the terminal checks and says what to install', async () => {
         // A PATH holding only Node's own folder, so script(1) can't be found.
         const env = { PATH: dirname(node) };
-        const r = cliprobe(
+        const r = await cliprobe(
             ['--json', '--check', 'color', '--', node, fixture('color/plain')],
             undefined,
             env

@@ -10,11 +10,11 @@ const node = process.execPath;
 const only = { checks: ['color'] };
 const colorFixture = (name: string): string => fixture(`color/${name}`);
 
-function verdictOf(
+async function verdictOf(
     name: string,
     timeout?: number
-): { verdict: string; reason: string; evidence?: string } {
-    const { report } = probeJson([node, colorFixture(name)], {
+): Promise<{ verdict: string; reason: string; evidence?: string }> {
+    const { report } = await probeJson([node, colorFixture(name)], {
         ...only,
         ...(timeout ? { timeout } : {}),
     });
@@ -33,47 +33,49 @@ describe('color: fixtures', () => {
         ['ignores-no-color', 'warn', /ignores NO_COLOR/],
         ['stderr-always', 'warn', /stderr when it was a pipe/],
         ['empty', 'skip', /printed nothing/],
-    ])('%s -> %s', (name, verdict, reason) => {
-        const result = verdictOf(name);
+    ])('%s -> %s', async (name, verdict, reason) => {
+        const result = await verdictOf(name);
         expect(result.verdict).toBe(verdict);
         expect(result.reason).toMatch(reason);
     });
 
-    it('skips a program that waits for input in a terminal', () => {
-        const result = verdictOf('prompts', 1500);
+    it('skips a program that waits for input in a terminal', async () => {
+        const result = await verdictOf('prompts', 1500);
         expect(result.verdict).toBe('skip');
         expect(result.reason).toMatch(/waited for input/);
     });
 
-    it('points at the colored line as evidence', () => {
-        expect(verdictOf('always').evidence).toBe('stdout line 1: \x1b[31merror\x1b[0m: boom');
-        expect(verdictOf('ignores-no-color').evidence).toMatch(/^terminal line 1: /);
+    it('points at the colored line as evidence', async () => {
+        expect((await verdictOf('always')).evidence).toBe(
+            'stdout line 1: \x1b[31merror\x1b[0m: boom'
+        );
+        expect((await verdictOf('ignores-no-color')).evidence).toMatch(/^terminal line 1: /);
     });
 
-    it('exits 1 on a fail and 0 on a warn', () => {
-        expect(probeJson([node, colorFixture('always')], only).status).toBe(1);
-        expect(probeJson([node, colorFixture('ignores-no-color')], only).status).toBe(0);
+    it('exits 1 on a fail and 0 on a warn', async () => {
+        expect((await probeJson([node, colorFixture('always')], only)).status).toBe(1);
+        expect((await probeJson([node, colorFixture('ignores-no-color')], only)).status).toBe(0);
     });
 
-    it('escapes the evidence in human output', () => {
-        const r = cliprobe(['--check', 'color', '--', node, colorFixture('always')]);
+    it('escapes the evidence in human output', async () => {
+        const r = await cliprobe(['--check', 'color', '--', node, colorFixture('always')]);
         expect(r.stdout).not.toContain('\x1b');
         expect(r.stdout).toContain('\\x1b[31merror');
     });
 
-    it('records each run in JSON, and leaves out runs it did not need', () => {
-        const pass = probeJson([node, colorFixture('tty-aware')], only).report.results[0];
+    it('records each run in JSON, and leaves out runs it did not need', async () => {
+        const pass = (await probeJson([node, colorFixture('tty-aware')], only)).report.results[0];
         expect(pass).toMatchObject({
             pipe: { stdoutStyled: false, stderrStyled: false },
             tty: { styled: true, timedOut: false },
             noColor: { styled: false },
         });
-        const fail = probeJson([node, colorFixture('always')], only).report.results[0];
+        const fail = (await probeJson([node, colorFixture('always')], only)).report.results[0];
         expect(fail).toMatchObject({ pipe: { stdoutStyled: true }, tty: null, noColor: null });
     });
 
-    it('reports a missing command as could-not-run', () => {
-        const { report } = probeJson(['cliprobe-no-such-command-xyz'], only);
+    it('reports a missing command as could-not-run', async () => {
+        const { report } = await probeJson(['cliprobe-no-such-command-xyz'], only);
         expect(report.results.every((r) => r.verdict === 'error')).toBe(true);
     });
 });
@@ -89,8 +91,8 @@ describe('color: real tools must not fail', () => {
         ['ls', lsColor],
         ['grep --color=auto', ['grep', '--color=auto', 'needle', join(dir, 'file.txt')]],
         ['node --version', [node, '--version']],
-    ])('%s', (_name, command) => {
-        const result = first(probeJson(command, only).report);
+    ])('%s', async (_name, command) => {
+        const result = first((await probeJson(command, only)).report);
         // Not every real tool honors NO_COLOR (a warn), but none may fail.
         expect(['pass', 'warn']).toContain(result.verdict);
     });

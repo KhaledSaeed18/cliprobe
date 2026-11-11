@@ -12,8 +12,10 @@ interface PipeEscapesJson {
     stderrKinds: string[];
 }
 
-const probe = (command: readonly string[]): { status: number | null; result: PipeEscapesJson } => {
-    const { status, report } = probeJson(command, only);
+const probe = async (
+    command: readonly string[]
+): Promise<{ status: number | null; result: PipeEscapesJson }> => {
+    const { status, report } = await probeJson(command, only);
     return { status, result: first(report) as unknown as PipeEscapesJson };
 };
 const escFixture = (name: string): string[] => [node, fixture(`pipe-escapes/${name}`)];
@@ -27,29 +29,29 @@ describe('pipe-escapes: fixtures', () => {
         ['tty-spinner', 'pass', /no cursor, erase/],
         ['crlf', 'pass', /no cursor, erase/],
         ['color-only', 'pass', /no cursor, erase/],
-    ])('%s -> %s', (name, verdict, reason) => {
-        const { result } = probe(escFixture(name));
+    ])('%s -> %s', async (name, verdict, reason) => {
+        const { result } = await probe(escFixture(name));
         expect(result.verdict).toBe(verdict);
         expect(result.reason).toMatch(reason);
     });
 
-    it('skips a program that prints nothing', () => {
-        expect(probe([node, fixture('color/empty')]).result.verdict).toBe('skip');
+    it('skips a program that prints nothing', async () => {
+        expect((await probe([node, fixture('color/empty')])).result.verdict).toBe('skip');
     });
 
-    it('checks stderr too, where spinners usually draw, and says which stream', () => {
-        const { result } = probe(escFixture('spinner'));
+    it('checks stderr too, where spinners usually draw, and says which stream', async () => {
+        const { result } = await probe(escFixture('spinner'));
         expect(result.stdoutKinds).toEqual([]);
         expect(result.stderrKinds).toEqual(['redraw', 'erase']);
         expect(result.evidence).toMatch(/^stderr line 1: /);
     });
 
-    it('warns without failing, so the exit code stays 0', () => {
-        expect(probe(escFixture('hyperlink')).status).toBe(0);
+    it('warns without failing, so the exit code stays 0', async () => {
+        expect((await probe(escFixture('hyperlink'))).status).toBe(0);
     });
 
-    it('reports a missing command as could-not-run', () => {
-        expect(probe(['cliprobe-no-such-command-xyz']).result.verdict).toBe('error');
+    it('reports a missing command as could-not-run', async () => {
+        expect((await probe(['cliprobe-no-such-command-xyz'])).result.verdict).toBe('error');
     });
 });
 
@@ -58,7 +60,7 @@ describe('pipe-escapes: real tools pass', () => {
         ['printf', ['printf', 'hello\\n']],
         ['ls', ['ls', '.']],
         ['node --version', [node, '--version']],
-    ])('%s', (_name, command) => {
-        expect(probe(command).result.verdict).toBe('pass');
+    ])('%s', async (_name, command) => {
+        expect((await probe(command)).result.verdict).toBe('pass');
     });
 });
