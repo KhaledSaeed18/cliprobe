@@ -144,12 +144,11 @@ export function run(
                     // Exited in the meantime.
                 }
             }, signal.afterMs);
-        // The program may exit without reading stdin; writing to it is never needed,
-        // so its errors (EPIPE) don't matter.
-        child.stdin?.on('error', () => {});
+        // stdin is only ever closed, never written, and destroy() closes it without a
+        // write, so a program that already exited can't make it fail with EPIPE.
         const closeTimer =
             typeof stdin === 'object'
-                ? setTimeout(() => child.stdin?.end(), stdin.closeAfterMs)
+                ? setTimeout(() => child.stdin?.destroy(), stdin.closeAfterMs)
                 : undefined;
         child.on('exit', () => {
             exited = true;
