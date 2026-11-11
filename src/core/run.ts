@@ -20,6 +20,12 @@ export interface RunOptions {
      * Ctrl-C. Not sent if the program has already exited.
      */
     signal?: { name: NodeJS.Signals; afterMs: number };
+    /**
+     * What stdin is: 'null' (/dev/null, the default), 'open' (a pipe that nobody
+     * writes to and that stays open, as agents and CI runners often leave it), or
+     * a pipe closed after a delay.
+     */
+    stdin?: 'null' | 'open' | { closeAfterMs: number };
 }
 
 export interface RunResult {
@@ -50,7 +56,14 @@ type Outcome = Pick<RunResult, 'exitCode' | 'signal' | 'spawnError'>;
 export function run(
     command: string,
     args: readonly string[],
-    { closedStdout = false, timeout, env: overrides = {}, beforeKill, signal }: RunOptions
+    {
+        closedStdout = false,
+        timeout,
+        env: overrides = {},
+        beforeKill,
+        signal,
+        stdin = 'null',
+    }: RunOptions
 ): Promise<RunResult> {
     const { dir, env: base } = sandbox();
     const env: Record<string, string> = { ...base };
@@ -102,7 +115,7 @@ export function run(
             // `node ./dist/cli.js` work. HOME and TMPDIR point at a throwaway directory.
             child = spawn(command, [...args], {
                 env,
-                stdio: ['ignore', stdoutFd, 'pipe'],
+                stdio: [stdin === 'null' ? 'ignore' : 'pipe', stdoutFd, 'pipe'],
                 detached: true,
             });
         } catch (error) {
@@ -131,9 +144,19 @@ export function run(
                     // Exited in the meantime.
                 }
             }, signal.afterMs);
+        // The program may exit without reading stdin; writing to it is never needed,
+        // so its errors (EPIPE) don't matter.
+        child.stdin?.on('error', () => {});
+        const closeTimer =
+            typeof stdin === 'object'
+                ? setTimeout(() => child.stdin?.end(), stdin.closeAfterMs)
+                : undefined;
         child.on('exit', () => {
             exited = true;
             clearTimeout(signalTimer);
+            clearTimeout(closeTimer);
+            // An open stdin pipe must not keep cliprobe itself running.
+            child.stdin?.destroy();
         });
         child.stdout?.on('data', (chunk: Buffer) => {
             if (stdoutBytes < STDOUT_CAP) stdoutChunks.push(chunk);
