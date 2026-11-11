@@ -80,3 +80,34 @@ describe('run with a delayed signal', () => {
         expect(r.durationMs).toBeLessThan(300);
     });
 });
+
+describe('run with a stdin mode', () => {
+    it('gives /dev/null by default, so a reader sees the end at once', async () => {
+        const r = await run(node, [fixture('stdin-read')], { timeout: 5000 });
+        expect(r.stdout.toString()).toBe('read 0 bytes\n');
+        expect(r.durationMs).toBeLessThan(1000);
+    });
+
+    it('leaves an open pipe open, so a reader waits until the timeout', async () => {
+        const r = await run(node, [fixture('stdin-read')], { timeout: 800, stdin: 'open' });
+        expect(r.timedOut).toBe(true);
+        expect(r.stdout.toString()).toBe('');
+    });
+
+    it('closes the pipe after a delay, and the reader finishes just after', async () => {
+        const r = await run(node, [fixture('stdin-read')], {
+            timeout: 5000,
+            stdin: { closeAfterMs: 500 },
+        });
+        expect(r.timedOut).toBe(false);
+        expect(r.stdout.toString()).toBe('read 0 bytes\n');
+        expect(r.durationMs).toBeGreaterThanOrEqual(500);
+        expect(r.durationMs).toBeLessThan(2500);
+    });
+
+    it('does not let an open pipe keep a finished program from being reported', async () => {
+        const r = await run('printf', ['x'], { timeout: 5000, stdin: 'open' });
+        expect(r.timedOut).toBe(false);
+        expect(r.exitCode).toBe(0);
+    });
+});
