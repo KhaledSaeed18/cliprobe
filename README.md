@@ -84,7 +84,7 @@ In JUnit, each check is a test suite and each probe a test case: `FAIL` is a fai
 
 ## Checks
 
-A default run does the four checks below: closed-pipe, color, ctrl-c and control-chars. Each one reports evidence, never a score. Two info checks, startup and baseline, run only when you name them with `--check`.
+A default run does the five checks below: closed-pipe, color, pipe-escapes, ctrl-c and control-chars. Each one reports evidence, never a score. Two info checks, startup and baseline, run only when you name them with `--check`.
 
 **closed-pipe**. cliprobe runs the command twice: once normally, then with stdout set to a pipe whose reading end is already closed, so the first write fails every time, even for fast native programs. Results:
 
@@ -105,6 +105,16 @@ A default run does the four checks below: closed-pipe, color, ctrl-c and control
 | `SKIP`  | Printed nothing, waited for input in a terminal, or no `script` command (on Alpine, install `util-linux-misc`) |
 
 Many classic tools (git, BSD `ls` and `grep`) color correctly but don't implement [`NO_COLOR`](https://no-color.org), so they get a `WARN`, never a `FAIL`. Probe a command that prints color in normal use: almost no CLI colors its `--help`.
+
+**pipe-escapes**. cliprobe runs the command into a pipe, with the same environment as the color check, and looks at stdout and stderr for terminal control codes that only make sense on a screen: cursor movement, line and screen erases, mode switches such as hiding the cursor, hyperlinks (OSC 8), window titles, and carriage returns that redraw a line. Spinners and progress bars are the usual source. In a pipe they turn logs and agent transcripts into `\r\x1b[2K` noise. Results:
+
+| Verdict | Meaning                                                                    |
+| ------- | -------------------------------------------------------------------------- |
+| `PASS`  | None of those codes reached the pipe (color is the color check's business) |
+| `WARN`  | One or more reached stdout or stderr; the reason lists which kinds         |
+| `SKIP`  | Printed nothing                                                            |
+
+It only warns for now, never fails. In the census of the top 100 npm CLIs, no `--help` or `--version` printed any of these codes, which says nothing about their spinners: probe a command that does real work, such as an install or a build.
 
 **ctrl-c**. cliprobe lets the command run for 1 second, then sends SIGINT to its process group, which is what a terminal does when you press Ctrl-C, and gives it 3 seconds to exit. Results:
 
@@ -177,7 +187,7 @@ Also escape U+2028, U+2029 and the bidi controls (U+202A to U+202E, U+2066 to U+
 
 ## Safety
 
-cliprobe runs the target in your current directory without a shell, with stdin closed, a temporary `HOME`, and a minimal environment (no tokens from your shell). It still executes the program, so only probe programs you trust. By default cliprobe passes only the arguments you give, or `--version` and `--help`; only the baseline check, when you name it, adds an unknown flag. It kills each run's whole process group on timeout, including under a pseudo-terminal. macOS and Linux only for now.
+cliprobe runs the target in your current directory without a shell, with stdin closed, a temporary `HOME`, and a minimal environment (no tokens from your shell). It still executes the program, so only probe programs you trust. By default cliprobe passes only the arguments you give, or `--version` and `--help`; only the baseline check, when you name it, adds an unknown flag. It kills each run's whole process group on timeout, including under a pseudo-terminal. It runs on macOS and Linux, including Alpine; the terminal checks need the `script` command, which Alpine ships in `util-linux-misc`. Windows isn't supported yet.
 
 ## License
 
