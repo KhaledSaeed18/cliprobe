@@ -45,7 +45,8 @@ Info checks (never fail; run only when named with --check):
 
 Options:
   --check <name>     Run only this check; repeat it or use commas for several
-  --format <name>    Output format: human (default) or json
+  --format <name>    Output format: human (default), json, or markdown (for a CI
+                     job summary or a PR comment)
   --json             Same as --format json
   --timeout <ms>     Kill a probe after this long (default 15000)
   -h, --help         Show this help
