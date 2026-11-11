@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findControls, findStyle } from '../src/core/ansi.ts';
+import { findControls, findStyle, stripEscapes } from '../src/core/ansi.ts';
 
 describe('findStyle', () => {
     it('finds basic, bright, 256-color and truecolor codes', () => {
@@ -70,5 +70,17 @@ describe('findControls', () => {
 
     it('finds nothing in plain text', () => {
         expect(findControls('just text\nand more\n')).toEqual([]);
+    });
+});
+
+describe('stripEscapes', () => {
+    it('removes color, cursor and OSC codes but keeps the text and line breaks', () => {
+        expect(
+            stripEscapes('\x1b[31mred\x1b[0m \x1b[2Kline\n\x1b]8;;https://x\x07link\x1b]8;;\x07')
+        ).toBe('red line\nlink');
+    });
+
+    it('keeps carriage returns, which callers look at', () => {
+        expect(stripEscapes('\r- working')).toBe('\r- working');
     });
 });

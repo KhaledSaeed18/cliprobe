@@ -16,6 +16,7 @@ describe('cli', () => {
             'closed-pipe',
             'color',
             'pipe-escapes',
+            'stdin',
             'ctrl-c',
             'control-chars',
         ]);
@@ -28,6 +29,7 @@ describe('cli', () => {
             'control-chars:skip',
             'ctrl-c:skip',
             'pipe-escapes:error',
+            'stdin:error',
         ]);
     });
 

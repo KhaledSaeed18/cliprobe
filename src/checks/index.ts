@@ -6,12 +6,14 @@ import { controlCharsCheck } from './control-chars.ts';
 import { ctrlCCheck } from './ctrl-c.ts';
 import { pipeEscapesCheck } from './pipe-escapes.ts';
 import { startupCheck } from './startup.ts';
+import { stdinCheckDefinition } from './stdin.ts';
 
 /** Every check, in the order they run and are reported. */
 export const CHECKS: readonly Check[] = [
     closedPipeCheck,
     colorCheck,
     pipeEscapesCheck,
+    stdinCheckDefinition,
     ctrlCCheck,
     controlCharsCheck,
     startupCheck,

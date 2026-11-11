@@ -30,6 +30,7 @@ describe('selectChecks', () => {
             'closed-pipe',
             'color',
             'pipe-escapes',
+            'stdin',
             'ctrl-c',
             'control-chars',
         ]);
