@@ -3,8 +3,7 @@
 import { CHECKS, selectChecks } from '../checks/index.ts';
 import { collapseFixture, createFixture, expandFixture, usesFixture } from '../core/fixture.ts';
 import type { Result, Target } from '../core/types.ts';
-import { formatHuman } from '../report/human.ts';
-import { formatJson } from '../report/json.ts';
+import { FORMATS } from '../report/index.ts';
 import { VERSION } from '../version.ts';
 import { parseArgs, UsageError } from './args.ts';
 
@@ -116,27 +115,14 @@ async function main(): Promise<number> {
     // Report the placeholder, not a temporary path that no longer exists.
     const report = (text: string): void => out(fixture ? collapseFixture(text, fixture) : text);
 
-    if (opts.json) {
-        report(
-            formatJson(
-                VERSION,
-                opts.command,
-                checks.map((c) => c.name),
-                results
-            )
-        );
-    } else {
-        const useColor = process.stdout.isTTY && !process.env['NO_COLOR'];
-        report(
-            formatHuman(
-                VERSION,
-                opts.command,
-                checks.map((c) => c.name),
-                results,
-                useColor
-            )
-        );
-    }
+    const format = opts.json ? 'json' : 'human';
+    const color = process.stdout.isTTY && !process.env['NO_COLOR'];
+    report(
+        FORMATS[format](
+            { version: VERSION, command: opts.command, checks: checks.map((c) => c.name), results },
+            { color }
+        )
+    );
     if (results.some((r) => r.verdict === 'fail')) return 1;
     // Could not run, and no check got far enough to judge anything.
     const judged = results.some((r) => r.verdict !== 'error' && r.verdict !== 'skip');

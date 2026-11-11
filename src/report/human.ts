@@ -1,5 +1,6 @@
 import { safe } from '../core/safe.ts';
-import type { Result, Verdict } from '../core/types.ts';
+import type { Verdict } from '../core/types.ts';
+import type { RenderOptions, Report } from './types.ts';
 
 const COLORS: Record<Verdict, number> = {
     pass: 32,
@@ -11,15 +12,12 @@ const COLORS: Record<Verdict, number> = {
 };
 
 export function formatHuman(
-    version: string,
-    command: string,
-    checks: readonly string[],
-    results: readonly Result[],
-    useColor: boolean
+    { version, command, checks, results }: Report,
+    { color }: RenderOptions
 ): string {
     const paint = (verdict: Verdict): string => {
         const label = verdict.toUpperCase().padEnd(5);
-        return useColor ? `\x1b[${COLORS[verdict]}m${label}\x1b[0m` : label;
+        return color ? `\x1b[${COLORS[verdict]}m${label}\x1b[0m` : label;
     };
     const width = Math.max(0, ...results.map((r) => safe(r.invocation.join(' ')).length));
     const noun = checks.length === 1 ? 'check' : 'checks';
