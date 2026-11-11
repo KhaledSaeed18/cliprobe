@@ -29,6 +29,7 @@ describe('selectChecks', () => {
         expect(selectChecks([]).checks.map((c) => c.name)).toEqual([
             'closed-pipe',
             'color',
+            'pipe-escapes',
             'ctrl-c',
             'control-chars',
         ]);

@@ -12,7 +12,13 @@ describe('cli', () => {
     it('reports a missing command as could-not-run with exit 2', () => {
         const { status, report } = probeJson(['cliprobe-no-such-command-xyz']);
         expect(status).toBe(2);
-        expect(report.checks).toEqual(['closed-pipe', 'color', 'ctrl-c', 'control-chars']);
+        expect(report.checks).toEqual([
+            'closed-pipe',
+            'color',
+            'pipe-escapes',
+            'ctrl-c',
+            'control-chars',
+        ]);
         // Every check that runs the program says it could not; control-chars, with no
         // {fixture} to plant, skips without running it.
         const verdicts = new Set(report.results.map((r) => `${r.check}:${r.verdict}`));
@@ -21,6 +27,7 @@ describe('cli', () => {
             'color:error',
             'control-chars:skip',
             'ctrl-c:skip',
+            'pipe-escapes:error',
         ]);
     });
 
