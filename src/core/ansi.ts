@@ -50,3 +50,75 @@ export function findStyle(text: string): StyleHit | undefined {
     }
     return undefined;
 }
+
+/* oxlint-disable no-control-regex -- matching terminal control codes is the point */
+/** CSI: ESC [ parameter bytes, intermediate bytes, one final byte. */
+const CSI = /\x1b\[([0-?]*)[ -/]*([@-~])/g;
+/** OSC: ESC ] number ; text, ended by BEL or ESC \. */
+const OSC = /\x1b\](\d*);[^\x07\x1b]*(?:\x07|\x1b\\)/g;
+/** A carriage return that does not end a CRLF line: a line being redrawn. */
+const BARE_CR = /\r(?!\n)/g;
+/* oxlint-enable no-control-regex */
+
+export type ControlKind = 'cursor' | 'erase' | 'mode' | 'hyperlink' | 'title' | 'osc' | 'redraw';
+
+/** How each kind reads in a report. */
+export const CONTROL_LABELS: Readonly<Record<ControlKind, string>> = {
+    cursor: 'cursor movement',
+    erase: 'line or screen erase',
+    mode: 'terminal mode switch (such as hiding the cursor)',
+    hyperlink: 'hyperlink (OSC 8)',
+    title: 'window title',
+    osc: 'operating system command (OSC)',
+    redraw: 'carriage-return redraw',
+};
+
+export interface ControlHit extends StyleHit {
+    kind: ControlKind;
+}
+
+function csiKind(params: string, final: string): ControlKind | undefined {
+    if (final === 'm') return undefined; // SGR: color and style, the color check's job
+    if (final === 'K' || final === 'J') return 'erase';
+    if ((final === 'h' || final === 'l') && params.startsWith('?')) return 'mode';
+    return 'cursor';
+}
+
+function oscKind(code: string): ControlKind {
+    if (code === '8') return 'hyperlink';
+    if (code === '0' || code === '1' || code === '2') return 'title';
+    return 'osc';
+}
+
+function hitAt(text: string, index: number, sequence: string, kind: ControlKind): ControlHit {
+    const before = text.slice(0, index);
+    const start = before.lastIndexOf('\n') + 1;
+    const newline = text.indexOf('\n', index);
+    const end = newline === -1 ? text.length : newline;
+    return {
+        kind,
+        sequence,
+        line: before.split('\n').length,
+        text: text.slice(start, end).slice(0, 120),
+    };
+}
+
+/**
+ * Every terminal control code in the text other than color and style (SGR):
+ * cursor movement, erases, mode switches, OSC sequences such as hyperlinks and
+ * window titles, and carriage returns that redraw a line. In reading order.
+ */
+export function findControls(text: string): ControlHit[] {
+    const hits: { index: number; hit: ControlHit }[] = [];
+    for (const m of text.matchAll(CSI)) {
+        const kind = csiKind(m[1] ?? '', m[2] ?? '');
+        if (kind) hits.push({ index: m.index, hit: hitAt(text, m.index, m[0], kind) });
+    }
+    for (const m of text.matchAll(OSC)) {
+        hits.push({ index: m.index, hit: hitAt(text, m.index, m[0], oscKind(m[1] ?? '')) });
+    }
+    for (const m of text.matchAll(BARE_CR)) {
+        hits.push({ index: m.index, hit: hitAt(text, m.index, m[0], 'redraw') });
+    }
+    return hits.sort((a, b) => a.index - b.index).map((h) => h.hit);
+}
