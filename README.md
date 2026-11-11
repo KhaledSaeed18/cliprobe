@@ -7,7 +7,7 @@ npx cliprobe -- esbuild
 ```
 
 ```
-cliprobe 0.1.0: closed-pipe, color, ctrl-c, control-chars checks for esbuild
+cliprobe 0.4.0: closed-pipe, color, pipe-escapes, stdin, ctrl-c, control-chars checks for esbuild
 
 closed-pipe
   FAIL   esbuild --version  crashed when stdout was closed (exit 0 -> 1)
@@ -19,20 +19,28 @@ color
   PASS   esbuild --version  no color in a pipe or in a terminal
   PASS   esbuild --help     colors only in a terminal, and NO_COLOR turns it off
 
+pipe-escapes
+  PASS   esbuild --version  no cursor, erase, hyperlink, title or redraw codes in a pipe
+  PASS   esbuild --help     no cursor, erase, hyperlink, title or redraw codes in a pipe
+
+stdin
+  PASS   esbuild --version  finished without waiting for stdin
+  PASS   esbuild --help     finished without waiting for stdin
+
 ctrl-c
   SKIP   esbuild            needs probe args that keep it running, such as a watch or serve command
 
 control-chars
   SKIP   esbuild            no {fixture} in the arguments; put it where the command takes a path, e.g. ls {fixture}
 
-2 failed, 0 warned, 2 passed, 2 skipped
+2 failed, 0 warned, 6 passed, 2 skipped
 ```
 
 ## Why
 
 When a program's output goes into a reader that stops early (`| head`, `grep -q`, a closed agent pipe), its next write to stdout fails. A well-behaved program exits quietly. Many Node.js CLIs instead crash with `Error: write EPIPE`, a stack trace, and exit code 1. That breaks scripts running under `set -o pipefail` and confuses agents that read stderr.
 
-In a census of the 100 most-downloaded npm packages that ship a command (119 commands, run offline in a throwaway container), **9 crashed this way every time**: esbuild, browserslist, update-browserslist-db, autoprefixer, husky, tsconfck, ts-jest, rolldown, and tsx on `--version`. The best-known existing CLI auditor rated the first 8 as passing its SIGPIPE check. The same census found two commands that print color codes into a pipe (`giget --help`, `tsx --help`), and no false failures: every `FAIL` reproduced by hand. (A census of `--help` and `--version` can't exercise ctrl-c or control-chars, which need a command that keeps running or takes a path; their fixtures and real-tool tests are in `test/`.)
+In a census of the 100 most-downloaded npm packages that ship a command (119 commands, run offline in a throwaway container), **9 crashed this way every time**: esbuild, browserslist, update-browserslist-db, autoprefixer, husky, tsconfck, ts-jest, rolldown, and tsx on `--version`. The best-known existing CLI auditor rated the first 8 as passing its SIGPIPE check. The same census found two commands that print color codes into a pipe (`giget --help`, `tsx --help`), five whose `--help` or `--version` waits for stdin (he, cssesc, ansi-html, webpack and webpack-dev-server), and no false failures: every `FAIL` reproduced by hand. (A census of `--help` and `--version` can't exercise ctrl-c or control-chars, which need a command that keeps running or takes a path; their fixtures and real-tool tests are in `test/`.)
 
 The other checks cover the rest of what goes wrong between a program and the thing reading it: color codes leaking into logs and agent transcripts, Ctrl-C that is ignored or ends in a stack trace, and file names that can send escape sequences to your terminal.
 
@@ -84,7 +92,7 @@ In JUnit, each check is a test suite and each probe a test case: `FAIL` is a fai
 
 ## Checks
 
-A default run does the five checks below: closed-pipe, color, pipe-escapes, ctrl-c and control-chars. Each one reports evidence, never a score. Two info checks, startup and baseline, run only when you name them with `--check`.
+A default run does the six checks below: closed-pipe, color, pipe-escapes, stdin, ctrl-c and control-chars. Each one reports evidence, never a score. Two info checks, startup and baseline, run only when you name them with `--check`.
 
 **closed-pipe**. cliprobe runs the command twice: once normally, then with stdout set to a pipe whose reading end is already closed, so the first write fails every time, even for fast native programs. Results:
 
@@ -115,6 +123,17 @@ Many classic tools (git, BSD `ls` and `grep`) color correctly but don't implemen
 | `SKIP`  | Printed nothing                                                            |
 
 It only warns for now, never fails. In the census of the top 100 npm CLIs, no `--help` or `--version` printed any of these codes, which says nothing about their spinners: probe a command that does real work, such as an install or a build.
+
+**stdin**. Agents and CI runners often start a command with stdin as a pipe that stays open and never receives anything. A program that reads stdin, or asks a question, then waits forever. cliprobe runs the command three ways: with stdin closed (`/dev/null`), with an open pipe, and, if that hangs for 3 seconds, with a pipe it closes after 1 second. Finishing right after the close proves stdin was the cause. Results:
+
+| Verdict | Meaning                                                                                                                   |
+| ------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `PASS`  | Finished without waiting for stdin                                                                                        |
+| `FAIL`  | `--version` or `--help` waited for stdin before answering: they must never need input                                     |
+| `WARN`  | A probe you wrote printed an unfinished line, like a question, then waited: it prompts even though stdin isn't a terminal |
+| `SKIP`  | A probe you wrote waited silently, like a filter (`grep pattern`), or the hang wasn't caused by stdin                     |
+
+In the census of the top 100 npm CLIs, 9 of 238 `--help` and `--version` runs failed, each confirmed by hand. he, cssesc and ansi-html read stdin before looking at their arguments. webpack and webpack-dev-server, when webpack-cli is missing, ask whether to install it and wait for an answer without checking for a terminal. With no arguments, 17 tools waited on stdin as filters by design, which is why probes you write never fail this check.
 
 **ctrl-c**. cliprobe lets the command run for 1 second, then sends SIGINT to its process group, which is what a terminal does when you press Ctrl-C, and gives it 3 seconds to exit. Results:
 
@@ -164,6 +183,13 @@ const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
 ```
 
 `util.styleText` makes that decision for you on Node 22.13 and later (its `validateStream` option, on by default), and most color libraries check `isTTY` already, but some turn color on whenever `TERM` allows it or `CI` is set.
+
+**stdin:** look at your arguments before reading stdin, so `--help` and `--version` answer at once, and only prompt when stdin is a terminal:
+
+```js
+if (process.stdin.isTTY) askTheQuestion();
+else useTheDefault(); // or fail with a message saying which flag to pass
+```
 
 **ctrl-c:** Node's default already does the right thing, dying by SIGINT. If you add a handler to clean up, finish by exiting 130 rather than 0, and don't throw from it:
 
