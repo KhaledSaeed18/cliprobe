@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findStyle } from '../src/core/ansi.ts';
+import { findControls, findStyle } from '../src/core/ansi.ts';
 
 describe('findStyle', () => {
     it('finds basic, bright, 256-color and truecolor codes', () => {
@@ -32,5 +32,43 @@ describe('findStyle', () => {
             line: 2,
             text: 'two \x1b[33mwarn\x1b[0m',
         });
+    });
+});
+
+describe('findControls', () => {
+    const kinds = (text: string): string[] => findControls(text).map((h) => h.kind);
+
+    it('finds cursor movement, erases and mode switches', () => {
+        expect(kinds('\x1b[1G\x1b[2A\x1b[10;5H')).toEqual(['cursor', 'cursor', 'cursor']);
+        expect(kinds('\x1b[2K\x1b[J')).toEqual(['erase', 'erase']);
+        expect(kinds('\x1b[?25l\x1b[?25h\x1b[?2004h')).toEqual(['mode', 'mode', 'mode']);
+    });
+
+    it('finds hyperlinks, window titles and other OSC codes, ended by BEL or ST', () => {
+        expect(kinds('\x1b]8;;https://x.dev\x07link\x1b]8;;\x07')).toEqual([
+            'hyperlink',
+            'hyperlink',
+        ]);
+        expect(kinds('\x1b]0;my title\x1b\\')).toEqual(['title']);
+        expect(kinds('\x1b]52;c;aGk=\x07')).toEqual(['osc']);
+    });
+
+    it('treats a carriage return that redraws a line as a redraw, but not CRLF', () => {
+        expect(kinds('working |\rworking /\rdone\n')).toEqual(['redraw', 'redraw']);
+        expect(kinds('line one\r\nline two\r\n')).toEqual([]);
+    });
+
+    it('leaves color and style to the color check', () => {
+        expect(kinds('\x1b[31mred\x1b[0m \x1b[1mbold\x1b[22m')).toEqual([]);
+    });
+
+    it('lists hits in reading order with their line', () => {
+        const hits = findControls('plain\n\x1b]0;t\x07 \x1b[2K\rx');
+        expect(hits.map((h) => h.kind)).toEqual(['title', 'erase', 'redraw']);
+        expect(hits[0]).toMatchObject({ line: 2, sequence: '\x1b]0;t\x07' });
+    });
+
+    it('finds nothing in plain text', () => {
+        expect(findControls('just text\nand more\n')).toEqual([]);
     });
 });
