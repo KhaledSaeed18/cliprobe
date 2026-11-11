@@ -3,7 +3,9 @@
 import { CHECKS, selectChecks } from '../checks/index.ts';
 import { collapseFixture, createFixture, expandFixture, usesFixture } from '../core/fixture.ts';
 import type { Result, Target } from '../core/types.ts';
-import { FORMATS } from '../report/index.ts';
+import { FORMATS, type Report } from '../report/index.ts';
+import { writeReportFile } from '../report/write.ts';
+import { safe } from '../core/safe.ts';
 import { VERSION } from '../version.ts';
 import { parseArgs, UsageError } from './args.ts';
 
@@ -48,6 +50,9 @@ Options:
   --format <name>    Output format: human (default), json, markdown (a CI job
                      summary or PR comment) or junit (XML for CI test reports)
   --json             Same as --format json
+  -o, --output-file <path>
+                     Write the --format report to a file (created atomically,
+                     with parent folders); the human report still prints
   --timeout <ms>     Kill a probe after this long (default 15000)
   -h, --help         Show this help
   -v, --version      Show the version
@@ -115,15 +120,29 @@ async function main(): Promise<number> {
         fixture?.cleanup();
     }
     // Report the placeholder, not a temporary path that no longer exists.
-    const report = (text: string): void => out(fixture ? collapseFixture(text, fixture) : text);
-
+    const collapse = (text: string): string => (fixture ? collapseFixture(text, fixture) : text);
+    const report: Report = {
+        version: VERSION,
+        command: opts.command,
+        checks: checks.map((c) => c.name),
+        results,
+    };
     const color = process.stdout.isTTY && !process.env['NO_COLOR'];
-    report(
-        FORMATS[opts.format](
-            { version: VERSION, command: opts.command, checks: checks.map((c) => c.name), results },
-            { color }
-        )
-    );
+    if (opts.outputFile) {
+        try {
+            writeReportFile(
+                opts.outputFile,
+                collapse(FORMATS[opts.format](report, { color: false }))
+            );
+        } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error);
+            err(`cliprobe: could not write ${safe(opts.outputFile)}: ${safe(reason)}\n`);
+            return 2;
+        }
+        out(collapse(FORMATS.human(report, { color })));
+    } else {
+        out(collapse(FORMATS[opts.format](report, { color })));
+    }
     if (results.some((r) => r.verdict === 'fail')) return 1;
     // Could not run, and no check got far enough to judge anything.
     const judged = results.some((r) => r.verdict !== 'error' && r.verdict !== 'skip');
