@@ -43,6 +43,7 @@ npx cliprobe -- <command>                 # probes "<command> --version" and "<c
 npx cliprobe -- <command> [args...]       # probes exactly this invocation
 npx cliprobe -- node ./dist/cli.js list   # test your own CLI before publishing
 npx cliprobe --json -- <command>          # machine-readable results
+npx cliprobe --format junit -o report.xml -- <command>   # JUnit file for CI; human report on stdout
 npx cliprobe -- ls {fixture}              # {fixture}: a directory of hostile file names
 npx cliprobe --check startup,baseline -- node ./dist/cli.js   # info checks, only when named
 ```
@@ -58,6 +59,28 @@ npx cliprobe --check startup,baseline -- node ./dist/cli.js   # info checks, onl
 | `-v`, `--version`            | Show the version                                                                                                               |
 
 Exit codes: `0` no failures, `1` a check failed, `2` usage error or the command could not run. That makes it usable as a CI gate.
+
+### In CI
+
+A failed check exits 1, so the step fails. In GitHub Actions, write a Markdown report to the job summary while the log keeps the human report:
+
+```yaml
+- name: Check the CLI for terminal-edge bugs
+  run: npx --yes cliprobe@0 --format markdown --output-file "$GITHUB_STEP_SUMMARY" -- node ./dist/cli.js
+```
+
+For CI systems that read test results, write JUnit XML instead and keep it even when the step fails:
+
+```yaml
+- run: npx --yes cliprobe@0 --format junit --output-file reports/cliprobe.xml -- node ./dist/cli.js
+- uses: actions/upload-artifact@v7
+  if: always()
+  with:
+    name: cliprobe-report
+    path: reports/cliprobe.xml
+```
+
+In JUnit, each check is a test suite and each probe a test case: `FAIL` is a failure, could-not-run an error, `SKIP` skipped; `WARN`, `INFO` and `PASS` pass, with the verdict and reason in the case's output.
 
 ## Checks
 
