@@ -79,7 +79,7 @@ describe('cli', () => {
     it('exits 2 on an unknown --format before running anything', () => {
         const r = cliprobe(['--format', 'xml', '--', 'printf', 'x']);
         expect(r.status).toBe(2);
-        expect(r.stderr).toContain('--format needs one of human, json, markdown');
+        expect(r.stderr).toContain('--format needs one of human, json, markdown, junit');
         expect(r.stdout).toBe('');
     });
 });

@@ -66,7 +66,7 @@ describe('parseArgs --format', () => {
 
     it('rejects an unknown or missing format, naming the valid ones', () => {
         expect(() => parseArgs(['--format', 'xml', 'node'])).toThrow(
-            /one of human, json, markdown, got "xml"/
+            /one of human, json, markdown, junit, got "xml"/
         );
         expect(() => parseArgs(['--format'])).toThrow(UsageError);
     });
