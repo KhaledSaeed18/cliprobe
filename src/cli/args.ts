@@ -1,7 +1,10 @@
+import { type Format, FORMAT_NAMES, isFormat } from '../report/index.ts';
+
 export class UsageError extends Error {}
 
 export interface Options {
-    json: boolean;
+    /** Output format; --json is shorthand for --format json. */
+    format: Format;
     timeout: number;
     help: boolean;
     version: boolean;
@@ -13,7 +16,7 @@ export interface Options {
 
 export function parseArgs(argv: readonly string[]): Options {
     const opts: Options = {
-        json: false,
+        format: 'human',
         timeout: 15000,
         help: false,
         version: false,
@@ -27,8 +30,16 @@ export function parseArgs(argv: readonly string[]): Options {
             [opts.command, ...opts.args] = argv.slice(i + 1);
             break;
         }
-        if (a === '--json') opts.json = true;
-        else if (a === '-h' || a === '--help') opts.help = true;
+        if (a === '--json') opts.format = 'json';
+        else if (a === '--format' || a.startsWith('--format=')) {
+            const value = a.includes('=') ? a.slice(a.indexOf('=') + 1) : argv[++i];
+            if (value === undefined || !isFormat(value)) {
+                throw new UsageError(
+                    `--format needs one of ${FORMAT_NAMES.join(', ')}, got "${String(value)}"`
+                );
+            }
+            opts.format = value;
+        } else if (a === '-h' || a === '--help') opts.help = true;
         else if (a === '-v' || a === '--version') opts.version = true;
         else if (a === '--timeout' || a.startsWith('--timeout=')) {
             const value = a.includes('=') ? a.slice(a.indexOf('=') + 1) : argv[++i];

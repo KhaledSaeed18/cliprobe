@@ -45,7 +45,8 @@ Info checks (never fail; run only when named with --check):
 
 Options:
   --check <name>     Run only this check; repeat it or use commas for several
-  --json             Print results as JSON
+  --format <name>    Output format: human (default) or json
+  --json             Same as --format json
   --timeout <ms>     Kill a probe after this long (default 15000)
   -h, --help         Show this help
   -v, --version      Show the version
@@ -115,10 +116,9 @@ async function main(): Promise<number> {
     // Report the placeholder, not a temporary path that no longer exists.
     const report = (text: string): void => out(fixture ? collapseFixture(text, fixture) : text);
 
-    const format = opts.json ? 'json' : 'human';
     const color = process.stdout.isTTY && !process.env['NO_COLOR'];
     report(
-        FORMATS[format](
+        FORMATS[opts.format](
             { version: VERSION, command: opts.command, checks: checks.map((c) => c.name), results },
             { color }
         )

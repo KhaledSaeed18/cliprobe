@@ -68,4 +68,18 @@ describe('cli', () => {
     it('lists --check in --help', () => {
         expect(cliprobe(['--help']).stdout).toContain('--check <name>');
     });
+
+    it('prints the same JSON for --format json as for --json', () => {
+        const a = cliprobe(['--format', 'json', '--check', 'closed-pipe', '--', 'printf', 'x']);
+        const b = cliprobe(['--json', '--check', 'closed-pipe', '--', 'printf', 'x']);
+        expect(a.status).toBe(0);
+        expect(JSON.parse(a.stdout)).toEqual(JSON.parse(b.stdout));
+    });
+
+    it('exits 2 on an unknown --format before running anything', () => {
+        const r = cliprobe(['--format', 'xml', '--', 'printf', 'x']);
+        expect(r.status).toBe(2);
+        expect(r.stderr).toContain('--format needs one of human, json');
+        expect(r.stdout).toBe('');
+    });
 });

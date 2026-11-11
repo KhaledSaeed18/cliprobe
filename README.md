@@ -50,7 +50,8 @@ npx cliprobe --check startup,baseline -- node ./dist/cli.js   # info checks, onl
 | Option            | Meaning                                                  |
 | ----------------- | -------------------------------------------------------- |
 | `--check <name>`  | Run only this check; repeat it or use commas for several |
-| `--json`          | Print results as JSON, including the checks that ran     |
+| `--format <name>` | Output format: `human` (default) or `json`               |
+| `--json`          | Same as `--format json`                                  |
 | `--timeout <ms>`  | Kill a probe after this long (default 15000)             |
 | `-h`, `--help`    | Show help                                                |
 | `-v`, `--version` | Show the version                                         |
