@@ -1,5 +1,6 @@
 import { safe } from '../core/safe.ts';
 import type { Verdict } from '../core/types.ts';
+import { countVerdicts, summaryLine } from './summary.ts';
 import type { RenderOptions, Report } from './types.ts';
 
 const COLORS: Record<Verdict, number> = {
@@ -37,12 +38,6 @@ export function formatHuman(
             }
         }
     }
-    const count = (v: Verdict): number => results.filter((r) => r.verdict === v).length;
-    const info = count('info') ? `, ${count('info')} info` : '';
-    const errors = count('error') ? `, ${count('error')} could not run` : '';
-    lines.push(
-        '',
-        `${count('fail')} failed, ${count('warn')} warned, ${count('pass')} passed, ${count('skip')} skipped${info}${errors}`
-    );
+    lines.push('', summaryLine(countVerdicts(results)));
     return lines.join('\n') + '\n';
 }
