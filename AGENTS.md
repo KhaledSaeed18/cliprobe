@@ -4,7 +4,7 @@ Instructions for coding agents (and people) working on cliprobe. `CLAUDE.md` imp
 
 ## What cliprobe is
 
-A zero-dependency npm CLI, run as `npx cliprobe -- <command> [args...]`, that black-box tests any command-line program for terminal-edge bugs: crashes on a closed pipe, color or control codes leaking into pipes, broken Ctrl-C handling, and control characters from file names reaching the terminal. It reports evidence (the error line, the first stack frame in the target's own code), never a score.
+A zero-dependency npm CLI, run as `npx cliprobe -- <command> [args...]`, that black-box tests any command-line program for terminal-edge bugs: crashes on a closed pipe, color or control codes leaking into pipes, programs that hang waiting on an open stdin, broken Ctrl-C handling, and control characters from file names reaching the terminal. It reports evidence (the error line, the first stack frame in the target's own code), never a score.
 
 ## Commands
 
@@ -21,21 +21,21 @@ Run `pnpm check` before pushing.
 
 ## Layout
 
-| Path                 | Holds                                                                                                                                                                                        |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/cli/`           | `args.ts` (option parsing), `help.ts` (help text), `program.ts` (`run(argv, io)`, the whole CLI, and `exitCodeFor`), `main.ts` (wires the real process into `run`)                           |
-| `src/checks/`        | One file per check, each exporting a `Check`; `index.ts` is the registry (`CHECKS`, `selectChecks`)                                                                                          |
-| `src/core/`          | `run.ts` (spawning: no shell, detached group, timeouts, closed-stdout FIFO, delayed signals), `pty.ts` (pseudo-terminal through `script(1)`), `ansi.ts`, `safe.ts`, `fixture.ts`, `types.ts` |
-| `src/report/`        | One formatter per output format (`human`, `json`, `markdown`, `junit`) behind `FORMATS`, plus `summary.ts` and `write.ts`                                                                    |
-| `test/`              | Vitest; `helpers/cli.ts` runs the CLI in-process; `bin.test.ts` spawns the built file; `fixtures/<check>/` hold pass and fail programs                                                       |
-| `.github/workflows/` | `ci.yml` (quality, Linux and macOS on Node 22/24/26, Alpine), `release.yml` (CI, then semantic-release to npm)                                                                               |
+| Path                 | Holds                                                                                                                                                                                                                                         |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/cli/`           | `args.ts` (option parsing), `help.ts` (help text), `program.ts` (`run(argv, io)`, the whole CLI, and `exitCodeFor`), `main.ts` (wires the real process into `run`)                                                                            |
+| `src/checks/`        | One file per check, each exporting a `Check`; `index.ts` is the registry (`CHECKS`, `selectChecks`)                                                                                                                                           |
+| `src/core/`          | `run.ts` (spawning: no shell, detached group, timeouts, closed-stdout FIFO, stdin as `/dev/null` or an open or closing pipe, delayed signals), `pty.ts` (pseudo-terminal through `script(1)`), `ansi.ts`, `safe.ts`, `fixture.ts`, `types.ts` |
+| `src/report/`        | One formatter per output format (`human`, `json`, `markdown`, `junit`) behind `FORMATS`, plus `summary.ts` and `write.ts`                                                                                                                     |
+| `test/`              | Vitest; `helpers/cli.ts` runs the CLI in-process; `bin.test.ts` spawns the built file; `fixtures/<check>/` hold pass and fail programs                                                                                                        |
+| `.github/workflows/` | `ci.yml` (quality, Linux and macOS on Node 22/24/26, Alpine), `release.yml` (CI, then semantic-release to npm)                                                                                                                                |
 
 ## Product rules
 
 - **Evidence, never a score.** Every result is pass, fail, warn, skip, error or info, with the evidence attached.
 - **No false fails.** A new check starts as warn-only and is calibrated against real tools (the census of the top-100 npm CLIs, run in Docker) before it may fail.
 - **Deterministic.** No races: a closed pipe is a FIFO closed before spawn, Ctrl-C is a signal to the process group, the PTY gets an 80x24 window.
-- **Safety.** No shell; detached process group, whole group killed on timeout (including under the PTY); stdin is `/dev/null`; minimal environment with a temporary `HOME`. Only `baseline`, when named, sends a flag the user didn't give.
+- **Safety.** No shell; detached process group, whole group killed on timeout (including under the PTY); stdin is `/dev/null`, except that the stdin check gives it a pipe it never writes to and then closes; minimal environment with a temporary `HOME`. Only `baseline`, when named, sends a flag the user didn't give.
 - **Practise what we check.** Every piece of target text is escaped before output: `safe()` for human output, `safeJson()`, `code()`/`prose()` in Markdown, `xml()` in JUnit. cliprobe survives its own closed stdout.
 
 ## Keep everything in sync
