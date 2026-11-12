@@ -1,4 +1,5 @@
 import { CONTROL_LABELS, type ControlHit, type ControlKind, findControls } from '../core/ansi.ts';
+import { withoutHostileNames } from '../core/fixture.ts';
 import { run, type RunResult } from '../core/run.ts';
 import type { Check, Judgement, Result } from '../core/types.ts';
 
@@ -51,9 +52,18 @@ export function judgePipeEscapes(r: RunResult): Judgement {
 export async function pipeEscapes(
     command: string,
     args: readonly string[],
-    timeout: number
+    timeout: number,
+    /** True when the args hold {fixture}: its file names are control-chars' to judge, not ours. */
+    fixture = false
 ): Promise<PipeEscapesResult> {
-    const r = await run(command, args, { timeout, env: ENV });
+    const raw = await run(command, args, { timeout, env: ENV });
+    const r = fixture
+        ? {
+              ...raw,
+              stdout: Buffer.from(withoutHostileNames(raw.stdout.toString('utf8'))),
+              stderr: withoutHostileNames(raw.stderr),
+          }
+        : raw;
     return {
         check: 'pipe-escapes',
         invocation: [command, ...args],
@@ -70,7 +80,14 @@ export const pipeEscapesCheck: Check = {
     async run(target, ctx) {
         const results: Result[] = [];
         for (const args of target.invocations) {
-            results.push(await pipeEscapes(target.command, args, ctx.timeout));
+            results.push(
+                await pipeEscapes(
+                    target.command,
+                    args,
+                    ctx.timeout,
+                    target.fixtureDir !== undefined
+                )
+            );
         }
         return results;
     },
