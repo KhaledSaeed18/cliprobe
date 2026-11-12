@@ -1,3 +1,4 @@
+import { shellJoin } from '../core/quote.ts';
 import { safe } from '../core/safe.ts';
 import type { Result } from '../core/types.ts';
 import { countVerdicts } from './summary.ts';
@@ -27,7 +28,7 @@ function totals(results: readonly Result[]): string {
 }
 
 function testcase(r: Result): string {
-    const open = `    <testcase classname="cliprobe.${xml(r.check)}" name="${xml(r.invocation.join(' '))}"`;
+    const open = `    <testcase classname="cliprobe.${xml(r.check)}" name="${xml(shellJoin(r.invocation))}"`;
     const message = `message="${xml(r.reason)}"`;
     const body = r.evidence ? xml(r.evidence) : '';
     switch (r.verdict) {

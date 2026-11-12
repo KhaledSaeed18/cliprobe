@@ -70,7 +70,7 @@ describe('formatMarkdown', () => {
         const html = md.render(out);
         expect(html).not.toMatch(/<script|<b>/);
         expect(html).not.toContain(ESC);
-        expect(table[0]?.[2]).toBe('<code>tool a|b `tick` \\x1b]0;title\\x07</code>');
+        expect(table[0]?.[2]).toBe("<code>tool 'a|b' '`tick`' '\\x1b]0;title\\x07'</code>");
         expect(table[0]?.[3]).toContain('<code>Error: ``bad`` | &lt;b&gt;bold&lt;/b&gt;</code>');
     });
 

@@ -1,3 +1,4 @@
+import { shellJoin } from '../core/quote.ts';
 import { safe } from '../core/safe.ts';
 import type { Verdict } from '../core/types.ts';
 import { countVerdicts, summaryLine } from './summary.ts';
@@ -20,7 +21,7 @@ export function formatHuman(
         const label = verdict.toUpperCase().padEnd(5);
         return color ? `\x1b[${COLORS[verdict]}m${label}\x1b[0m` : label;
     };
-    const width = Math.max(0, ...results.map((r) => safe(r.invocation.join(' ')).length));
+    const width = Math.max(0, ...results.map((r) => safe(shellJoin(r.invocation)).length));
     const noun = checks.length === 1 ? 'check' : 'checks';
     const lines = [`cliprobe ${version}: ${checks.join(', ')} ${noun} for ${safe(command)}`];
     for (const check of checks) {
@@ -29,7 +30,7 @@ export function formatHuman(
         if (checks.length > 1) lines.push(check);
         for (const r of results.filter((result) => result.check === check)) {
             lines.push(
-                `  ${paint(r.verdict)}  ${safe(r.invocation.join(' ')).padEnd(width)}  ${r.reason}`
+                `  ${paint(r.verdict)}  ${safe(shellJoin(r.invocation)).padEnd(width)}  ${r.reason}`
             );
             if (r.evidence) {
                 lines.push(
