@@ -1,6 +1,6 @@
 {
     "name": "cliprobe",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "description": "Black-box test any command-line program for terminal-edge bugs: crashes on a closed pipe (| head), color and control codes leaking into pipes, hangs waiting on stdin, broken Ctrl-C handling, a terminal left broken after Ctrl-C, and control characters from file names reaching your terminal.",
     "type": "module",
     "bin": {

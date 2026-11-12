@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.6.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.5.0...v0.6.0) (2026-11-12)
+
+### Features
+
+* add --bare to probe a command with no arguments ([073fdc4](https://github.com/KhaledSaeed18/cliprobe/commit/073fdc417c8eaf31684165261755b6a9366cc9b7))
+* **baseline:** label which stream the evidence line came from ([da8e3d1](https://github.com/KhaledSaeed18/cliprobe/commit/da8e3d11015a227daca1c375a24d6bf8c3541e40))
+* **control-chars:** judge a command that keeps running on what reached the terminal ([5138ec0](https://github.com/KhaledSaeed18/cliprobe/commit/5138ec0552a8916532c4f71783e2f9b8c525611d))
+* judge a command that keeps running on what it did before the timeout ([9604a7c](https://github.com/KhaledSaeed18/cliprobe/commit/9604a7c653541b2e333a0dddcab3bd94cfdb936b))
+* report a missing command once, before any check ([3e64512](https://github.com/KhaledSaeed18/cliprobe/commit/3e64512f82ea6d6af9440ab38bd8f187c4ff120a))
+* show probe arguments shell-quoted in reports ([a2f705f](https://github.com/KhaledSaeed18/cliprobe/commit/a2f705fc888fcac58f2adc13b45ef78f04716279))
+
+### Bug Fixes
+
+* **help:** say that the stdin check uses an open pipe ([98b123b](https://github.com/KhaledSaeed18/cliprobe/commit/98b123b272f4180c8ebeb328ed6da268ecac1be8))
+* line up evidence when the args hold {fixture} ([0d2c7e1](https://github.com/KhaledSaeed18/cliprobe/commit/0d2c7e1bf1122126143c99fd052c8c4e0864baed))
+* **pipe-escapes:** leave {fixture} file names to control-chars ([380bdf8](https://github.com/KhaledSaeed18/cliprobe/commit/380bdf8e25d84722eadd9a4f65a9eaccca2d39c4))
+
 ## [0.5.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.4.1...v0.5.0) (2026-11-12)
 
 ### Features
