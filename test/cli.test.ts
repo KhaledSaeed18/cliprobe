@@ -37,6 +37,27 @@ describe('cli', () => {
         expect(r.stdout).not.toMatch(/cliprobe-fixture-/);
     });
 
+    it('probes the command alone with --bare, as a probe you wrote', async () => {
+        const leaky = fixture('bare/leaky-tui').replace(/\.mjs$/, '');
+        const r = await cliprobe([
+            '--json',
+            '--bare',
+            '--timeout',
+            '3000',
+            '--check',
+            'ctrl-c,restore',
+            '--',
+            leaky,
+        ]);
+        const report = JSON.parse(r.stdout) as Report;
+        expect(report.results.map((x) => [x.check, x.invocation, x.verdict])).toEqual([
+            ['ctrl-c', [leaky], 'pass'],
+            ['restore', [leaky], 'warn'],
+        ]);
+        expect(report.results[1]?.reason).toMatch(/after Ctrl-C/);
+        expect(r.status).toBe(0);
+    });
+
     it('probes --version and --help when given no args', async () => {
         const { report } = await probeJson(['node'], { checks: ['closed-pipe'] });
         expect(report.results.map((r) => r.invocation.slice(1))).toEqual([

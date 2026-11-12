@@ -1,0 +1,3 @@
+#!/bin/sh
+# A full-screen program you start with no arguments; it leaves the cursor hidden after Ctrl-C.
+exec node "$(dirname "$0")/../restore/fullscreen-leaks.mjs"

@@ -94,7 +94,7 @@ export const ctrlCCheck: Check = {
                 check: 'ctrl-c',
                 invocation: [target.command],
                 verdict: 'skip',
-                reason: 'needs probe args that keep it running, such as a watch or serve command',
+                reason: 'needs probe args that keep it running, such as a watch or serve command, or --bare',
                 sentAfterMs: null,
                 exitedAfterMs: null,
                 exitCode: null,

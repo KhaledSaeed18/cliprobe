@@ -6,9 +6,10 @@ Usage:
   cliprobe [options] -- <command> [args...]
 
 With no args after <command>, cliprobe probes "<command> --version" and
-"<command> --help". With args, it probes exactly that invocation. An argument
-containing {fixture} gets the path of a temporary directory of file names with
-control characters in them, for the control-chars check.
+"<command> --help". With args, it probes exactly that invocation; with --bare,
+the command alone. An argument containing {fixture} gets the path of a
+temporary directory of file names with control characters in them, for the
+control-chars check.
 
 Checks:
   closed-pipe   Runs the command with stdout already closed, as when output is
@@ -49,6 +50,8 @@ Info checks (never fail; run only when named with --check):
                 flags runs its default action, cut off after 5 s.
 
 Options:
+  --bare             Probe the command with no arguments (a REPL, a full-screen
+                     program, a server) instead of --version and --help
   --check <name>     Run only this check; repeat it or use commas for several
   --format <name>    Output format: human (default), json, markdown (a CI job
                      summary or PR comment) or junit (XML for CI test reports)

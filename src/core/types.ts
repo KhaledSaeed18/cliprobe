@@ -22,7 +22,7 @@ export interface Target {
     command: string;
     /** Arguments for each probe, with {fixture} already replaced by `fixtureDir`. */
     invocations: string[][];
-    /** True when the user gave the probe arguments; false for the default --version and --help. */
+    /** True when the user gave the probe arguments, or --bare; false for the default --version and --help. */
     explicit: boolean;
     /** The directory of hostile file names, when the arguments asked for one. */
     fixtureDir?: string;
