@@ -130,3 +130,63 @@ const ANY_ESCAPE = /\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g;
 export function stripEscapes(text: string): string {
     return text.replace(ANY_ESCAPE, '');
 }
+
+/** A terminal mode a program can switch on and must switch back off before it exits. */
+export interface TerminalMode {
+    label: string;
+    /** The DEC private mode numbers that control it. */
+    codes: readonly number[];
+    /** True when `h` (set) restores it and `l` (reset) changes it, as for the cursor. */
+    inverted?: boolean;
+}
+
+/** The modes that leave a shell broken when a program forgets them. */
+export const TERMINAL_MODES: readonly TerminalMode[] = [
+    { label: 'hidden cursor', codes: [25], inverted: true },
+    { label: 'alternate screen', codes: [47, 1047, 1049] },
+    { label: 'mouse reporting', codes: [9, 1000, 1001, 1002, 1003, 1005, 1006, 1015] },
+    { label: 'focus reporting', codes: [1004] },
+    { label: 'bracketed paste', codes: [2004] },
+    { label: 'line wrapping off', codes: [7], inverted: true },
+];
+
+export interface OpenMode {
+    label: string;
+    /** The sequence that switched it on, as printed. */
+    sequence: string;
+    /** 1-based line of that sequence. */
+    line: number;
+}
+
+/** DEC private mode set or reset (ESC [ ? numbers h|l), or a full reset (ESC c). */
+// oxlint-disable-next-line no-control-regex -- matching terminal control codes is the point
+const DEC_MODE = /\x1b\[\?([\d;]+)([hl])|\x1bc/g;
+
+/**
+ * The terminal modes the text leaves switched on, in the order they were
+ * switched on. A mode counts as on from its first switch-on until a later
+ * switch-off or a full reset, so a program that restores everything leaves none.
+ */
+export function findOpenModes(text: string): OpenMode[] {
+    const open = new Map<TerminalMode, OpenMode & { index: number }>();
+    for (const m of text.matchAll(DEC_MODE)) {
+        if (m[2] === undefined) {
+            open.clear(); // ESC c resets the terminal, every mode with it
+            continue;
+        }
+        const set = m[2] === 'h';
+        for (const code of (m[1] ?? '').split(';').map(Number)) {
+            const mode = TERMINAL_MODES.find((t) => t.codes.includes(code));
+            if (!mode) continue;
+            const on = mode.inverted ? !set : set;
+            if (!on) open.delete(mode);
+            else if (!open.has(mode)) {
+                const line = text.slice(0, m.index).split('\n').length;
+                open.set(mode, { label: mode.label, sequence: m[0], line, index: m.index });
+            }
+        }
+    }
+    return [...open.values()]
+        .sort((a, b) => a.index - b.index)
+        .map(({ label, sequence, line }) => ({ label, sequence, line }));
+}
