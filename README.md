@@ -166,12 +166,12 @@ It only warns: a terminal left in the wrong mode is a nuisance you can undo, not
 
 **control-chars**. Put `{fixture}` in the arguments where your command takes a path, for example `npx cliprobe -- ls {fixture}` or `npx cliprobe -- node ./dist/cli.js scan --dir={fixture}`. cliprobe replaces it with a temporary directory of file names holding escape sequences (one sets the window title, one clears the screen), a C1 control character, a carriage return, a newline and a bidirectional override. It runs the command under a terminal and looks for those characters, unescaped, in what reaches it. A file name that can clear someone's screen or retitle their window is a terminal injection, the same bug class as the `ls`/`find` escaping that GNU coreutils added years ago. Reports show `{fixture}`, never the temporary path, and the directory is removed afterwards. Results:
 
-| Verdict | Meaning                                                                                                     |
-| ------- | ----------------------------------------------------------------------------------------------------------- |
-| `PASS`  | Escaped or replaced the control characters (a raw bidi override is mentioned, not judged)                   |
-| `FAIL`  | Sent an escape sequence from a file name to the terminal unescaped                                          |
-| `WARN`  | Printed a C1 control, carriage return or newline from a file name unescaped, which can hide or forge output |
-| `SKIP`  | No `{fixture}` in the arguments, the command never printed the file names, or no usable `script`            |
+| Verdict | Meaning                                                                                                                                           |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PASS`  | Escaped or replaced the control characters (a raw bidi override is mentioned, not judged)                                                         |
+| `FAIL`  | Sent an escape sequence from a file name to the terminal unescaped                                                                                |
+| `WARN`  | Printed a C1 control, carriage return or newline from a file name unescaped, which can hide or forge output                                       |
+| `SKIP`  | No `{fixture}` in the arguments, the command never printed the file names (before the timeout, for one that keeps running), or no usable `script` |
 
 Only the terminal run is judged. Into a pipe, `ls` and `find` print names exactly, by design; that is recorded in the JSON (`pipeRaw`) but doesn't affect the verdict. BSD `find` on macOS fails this check: unlike GNU `find`, it prints names raw even to a terminal.
 
