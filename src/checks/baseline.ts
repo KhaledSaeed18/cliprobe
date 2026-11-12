@@ -13,8 +13,13 @@ export interface BaselineResult extends Result {
 }
 
 const lines = (text: string): string[] => text.split('\n').filter((l) => l.trim() !== '');
-const firstLine = (r: RunResult): string =>
-    lines(r.stdout.toString('utf8'))[0] ?? lines(r.stderr)[0] ?? '';
+/** The first line printed, labelled with its stream, as evidence. */
+function firstLine(r: RunResult): string {
+    const out = lines(r.stdout.toString('utf8'))[0];
+    if (out !== undefined) return `stdout: ${out}`;
+    const err = lines(r.stderr)[0];
+    return err === undefined ? '' : `stderr: ${err}`;
+}
 const exitText = (r: RunResult): string =>
     r.signal ? `was stopped by ${r.signal}` : `exited ${r.exitCode}`;
 
@@ -28,7 +33,7 @@ export function describeVersion(r: RunResult): { reason: string; evidence?: stri
     if (out.length > 1) {
         return {
             reason: `printed ${out.length} lines to stdout; one line is easier for scripts to parse`,
-            evidence: out[0] ?? '',
+            evidence: `first line: ${out[0] ?? ''}`,
         };
     }
     if (lines(r.stderr).length) {
