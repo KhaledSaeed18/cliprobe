@@ -1,7 +1,8 @@
 import { HOSTILE_NAMES, type HostileName, PLAIN_NAME } from '../core/fixture.ts';
 import { ptySupport, runPty, type PtyResult } from '../core/pty.ts';
+import { markLongRunning, probeTimeout } from '../core/long-running.ts';
 import { run, type RunResult } from '../core/run.ts';
-import type { Check, Judgement, Result } from '../core/types.ts';
+import type { Check, Context, Judgement, Result } from '../core/types.ts';
 
 const ENV = { TERM: 'xterm-256color', CI: undefined } as const;
 
@@ -47,11 +48,17 @@ export function judgeControlChars(runs: ControlCharsRuns): Judgement {
     if (pipe?.spawnError) {
         return { verdict: 'error', reason: `could not start: ${pipe.spawnError}` };
     }
-    if (pipe?.timedOut) return { verdict: 'error', reason: 'timed out on a normal run' };
     if (!tty) {
         return { verdict: 'skip', reason: `no terminal to check with (${runs.noPty ?? 'no PTY'})` };
     }
-    if (tty.timedOut) return { verdict: 'skip', reason: 'waited for input in a terminal' };
+    // A program still running at the timeout (a watcher, a prompt) is judged on what
+    // reached the terminal by then.
+    if (tty.timedOut && !tty.output.includes(PLAIN_NAME)) {
+        return {
+            verdict: 'skip',
+            reason: 'still running in a terminal at the timeout, and had not printed the file names in {fixture}',
+        };
+    }
     if (!tty.output.includes(PLAIN_NAME)) {
         return {
             verdict: 'skip',
@@ -84,17 +91,22 @@ async function controlCharsRuns(
     command: string,
     args: readonly string[],
     fixtureDir: string | undefined,
-    timeout: number
+    ctx: Context
 ): Promise<ControlCharsRuns> {
     const usesFixture = fixtureDir !== undefined && args.some((a) => a.includes(fixtureDir));
     if (!usesFixture) return { usesFixture };
-    const pipe = await run(command, args, { timeout, env: ENV });
-    if (pipe.spawnError || pipe.timedOut) return { usesFixture, pipe };
+    // The pipe run is only recorded (pipeRaw), so a short look is enough once it is known to keep running.
+    const pipe = await run(command, args, { timeout: probeTimeout(ctx, command, args), env: ENV });
+    if (pipe.spawnError) return { usesFixture, pipe };
+    if (pipe.timedOut) markLongRunning(ctx, command, args);
     const support = ptySupport();
     if (!support.ok) return { usesFixture, pipe, noPty: support.reason };
     // Judged under a terminal: that is where an escape sequence takes effect. Into a
     // pipe, printing names exactly is what ls and find are meant to do.
-    const tty = await runPty(command, args, { timeout, env: ENV });
+    const tty = await runPty(command, args, {
+        timeout: probeTimeout(ctx, command, args),
+        env: ENV,
+    });
     return { usesFixture, pipe, tty };
 }
 
@@ -105,9 +117,9 @@ export async function controlChars(
     command: string,
     args: readonly string[],
     fixtureDir: string | undefined,
-    timeout: number
+    ctx: Context
 ): Promise<ControlCharsResult> {
-    const runs = await controlCharsRuns(command, args, fixtureDir, timeout);
+    const runs = await controlCharsRuns(command, args, fixtureDir, ctx);
     const pipeOutput = runs.pipe && runs.pipe.stdout.toString('utf8') + runs.pipe.stderr;
     return {
         check: 'control-chars',
@@ -136,7 +148,7 @@ export const controlCharsCheck: Check = {
         }
         const results: Result[] = [];
         for (const args of target.invocations) {
-            results.push(await controlChars(target.command, args, target.fixtureDir, ctx.timeout));
+            results.push(await controlChars(target.command, args, target.fixtureDir, ctx));
         }
         return results;
     },

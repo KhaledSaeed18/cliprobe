@@ -60,6 +60,23 @@ describe('long-running probes: judged on what they did before the timeout', () =
         expect(status).toBe(0);
     });
 
+    it('fails a watcher that prints file names raw, judged before the timeout', async () => {
+        const { report } = await probeJson([...long('watch-lister'), '{fixture}'], {
+            checks: ['control-chars'],
+            timeout: 1500,
+        });
+        expect(report.results[0]?.verdict).toBe('fail');
+    });
+
+    it('skips a long-running program that never printed the file names', async () => {
+        const { report } = await probeJson([...long('silent'), '{fixture}'], {
+            checks: ['control-chars'],
+            timeout: 1500,
+        });
+        expect(report.results[0]?.verdict).toBe('skip');
+        expect(report.results[0]?.reason).toMatch(/still running in a terminal at the timeout/);
+    });
+
     it('pays the timeout once, not once per check', async () => {
         const start = performance.now();
         const r = await cliprobe([
