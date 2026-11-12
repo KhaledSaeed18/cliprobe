@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findControls, findStyle, stripEscapes } from '../src/core/ansi.ts';
+import { findControls, findOpenModes, findStyle, stripEscapes } from '../src/core/ansi.ts';
 
 describe('findStyle', () => {
     it('finds basic, bright, 256-color and truecolor codes', () => {
@@ -82,5 +82,41 @@ describe('stripEscapes', () => {
 
     it('keeps carriage returns, which callers look at', () => {
         expect(stripEscapes('\r- working')).toBe('\r- working');
+    });
+});
+
+describe('findOpenModes', () => {
+    const labels = (text: string): string[] => findOpenModes(text).map((m) => m.label);
+
+    it('finds a hidden cursor that is never shown again', () => {
+        expect(findOpenModes('a\n\x1b[?25lspinning')).toEqual([
+            { label: 'hidden cursor', sequence: '\x1b[?25l', line: 2 },
+        ]);
+    });
+
+    it('leaves out modes that were switched back off', () => {
+        expect(labels('\x1b[?1049h\x1b[?25l…\x1b[?25h\x1b[?1049l')).toEqual([]);
+        expect(labels('\x1b[?7l…\x1b[?7h')).toEqual([]);
+    });
+
+    it('reads several modes in one sequence', () => {
+        expect(labels('\x1b[?1000;1006h\x1b[?2004h\x1b[?1004h')).toEqual([
+            'mouse reporting',
+            'bracketed paste',
+            'focus reporting',
+        ]);
+    });
+
+    it('keeps the first switch-on as the evidence when a mode is switched on twice', () => {
+        expect(findOpenModes('\x1b[?25l\n\x1b[?25l')[0]?.line).toBe(1);
+    });
+
+    it('treats a full reset (ESC c) as restoring everything', () => {
+        expect(labels('\x1b[?25l\x1b[?1049h\x1bc')).toEqual([]);
+        expect(labels('\x1bc\x1b[?47h')).toEqual(['alternate screen']);
+    });
+
+    it('ignores modes that do not break a shell, and a shown cursor', () => {
+        expect(labels('\x1b[?1h\x1b[?12h\x1b[?25h\x1b[?7h')).toEqual([]);
     });
 });
