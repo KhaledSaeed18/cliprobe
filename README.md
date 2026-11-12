@@ -7,7 +7,7 @@ npx cliprobe -- esbuild
 ```
 
 ```
-cliprobe 0.4.0: closed-pipe, color, pipe-escapes, stdin, ctrl-c, control-chars checks for esbuild
+cliprobe 0.5.0: closed-pipe, color, pipe-escapes, stdin, ctrl-c, restore, control-chars checks for esbuild
 
 closed-pipe
   FAIL   esbuild --version  crashed when stdout was closed (exit 0 -> 1)
@@ -30,10 +30,14 @@ stdin
 ctrl-c
   SKIP   esbuild            needs probe args that keep it running, such as a watch or serve command
 
+restore
+  PASS   esbuild --version  left no terminal mode switched on when it exited
+  PASS   esbuild --help     left no terminal mode switched on when it exited
+
 control-chars
   SKIP   esbuild            no {fixture} in the arguments; put it where the command takes a path, e.g. ls {fixture}
 
-2 failed, 0 warned, 6 passed, 2 skipped
+2 failed, 0 warned, 8 passed, 2 skipped
 ```
 
 ## Why
@@ -42,7 +46,7 @@ When a program's output goes into a reader that stops early (`| head`, `grep -q`
 
 In a census of the 100 most-downloaded npm packages that ship a command (119 commands, run offline in a throwaway container), **9 crashed this way every time**: esbuild, browserslist, update-browserslist-db, autoprefixer, husky, tsconfck, ts-jest, rolldown, and tsx on `--version`. The best-known existing CLI auditor rated the first 8 as passing its SIGPIPE check. The same census found two commands that print color codes into a pipe (`giget --help`, `tsx --help`), five whose `--help` or `--version` waits for stdin (he, cssesc, ansi-html, webpack and webpack-dev-server), and no false failures: every `FAIL` reproduced by hand. (A census of `--help` and `--version` can't exercise ctrl-c or control-chars, which need a command that keeps running or takes a path; their fixtures and real-tool tests are in `test/`.)
 
-The other checks cover the rest of what goes wrong between a program and the thing reading it: color codes leaking into logs and agent transcripts, Ctrl-C that is ignored or ends in a stack trace, and file names that can send escape sequences to your terminal.
+The other checks cover the rest of what goes wrong between a program and the thing reading it: color codes leaking into logs and agent transcripts, Ctrl-C that is ignored or ends in a stack trace, a terminal left with a hidden cursor or no line wrapping after Ctrl-C, and file names that can send escape sequences to your terminal.
 
 ## Usage
 
@@ -92,7 +96,7 @@ In JUnit, each check is a test suite and each probe a test case: `FAIL` is a fai
 
 ## Checks
 
-A default run does the six checks below: closed-pipe, color, pipe-escapes, stdin, ctrl-c and control-chars. Each one reports evidence, never a score. Two info checks, startup and baseline, run only when you name them with `--check`.
+A default run does the seven checks below: closed-pipe, color, pipe-escapes, stdin, ctrl-c, restore and control-chars. Each one reports evidence, never a score. Two info checks, startup and baseline, run only when you name them with `--check`.
 
 **closed-pipe**. cliprobe runs the command twice: once normally, then with stdout set to a pipe whose reading end is already closed, so the first write fails every time, even for fast native programs. Results:
 
@@ -145,6 +149,16 @@ In the census of the top 100 npm CLIs, 9 of 238 `--help` and `--version` runs fa
 | `SKIP`  | Finished before the Ctrl-C, as `--version` and `--help` do: probe a command that keeps running |
 
 A stack trace printed before the Ctrl-C doesn't count. Python's default `KeyboardInterrupt` traceback is the classic failure here, so `python3 -c 'import time; time.sleep(30)'` fails.
+
+**restore**. Spinners, prompts and full-screen programs switch terminal modes on: they hide the cursor, open the alternate screen, turn on mouse reporting or bracketed paste, or turn line wrapping off. If they don't switch them back off on the way out, the shell they return to is broken until you run `reset`: no cursor, a blank screen, mouse clicks typed as junk, long lines cut off at the edge. cliprobe runs the command under a terminal and, for probes you write, types Ctrl-C after 1 second, as a person would. The keystroke goes through the terminal, so a program in raw mode gets it as a key rather than a signal, just as it would from a keyboard. `--version` and `--help` aren't interrupted; they're judged as they exit. Results:
+
+| Verdict | Meaning                                                                                                                     |
+| ------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `PASS`  | Left no mode switched on, either because it never switched one or because it switched each back off (or reset the terminal) |
+| `WARN`  | Left one or more on; the evidence quotes each sequence that was never undone and its line                                   |
+| `SKIP`  | Still running 3 seconds after Ctrl-C (REPLs quit on a second one), more than 1 MiB of output, or no usable `script` command |
+
+It only warns: a terminal left in the wrong mode is a nuisance you can undo, not a failure of the program's job. Across the top 100 npm CLIs, their watch modes and servers, and popular prompt and spinner libraries (about 300 runs), nothing warned falsely, and one tool really did break the terminal: `taze -I` turns line wrapping off for its progress bars and leaves it off after Ctrl-C.
 
 **control-chars**. Put `{fixture}` in the arguments where your command takes a path, for example `npx cliprobe -- ls {fixture}` or `npx cliprobe -- node ./dist/cli.js scan --dir={fixture}`. cliprobe replaces it with a temporary directory of file names holding escape sequences (one sets the window title, one clears the screen), a C1 control character, a carriage return, a newline and a bidirectional override. It runs the command under a terminal and looks for those characters, unescaped, in what reaches it. A file name that can clear someone's screen or retitle their window is a terminal injection, the same bug class as the `ls`/`find` escaping that GNU coreutils added years ago. Reports show `{fixture}`, never the temporary path, and the directory is removed afterwards. Results:
 
@@ -200,6 +214,14 @@ process.once('SIGINT', async () => {
 });
 ```
 
+**restore:** switch every mode back off on the way out, including after Ctrl-C. Node runs `exit` handlers on `process.exit()` but not when a signal kills it, so turn SIGINT into an exit, and in raw mode, where Ctrl-C arrives as the key `\x03`, exit on that key too:
+
+```js
+process.stdout.write('\x1b[?25l'); // hide the cursor
+process.on('exit', () => process.stdout.write('\x1b[?25h')); // and always show it again
+process.once('SIGINT', () => process.exit(130));
+```
+
 **control-chars:** escape names (and any other text you didn't write) before printing them for a person. `JSON.stringify` alone isn't enough: it leaves C1 controls and bidi overrides raw.
 
 ```js
@@ -213,7 +235,7 @@ Also escape U+2028, U+2029 and the bidi controls (U+202A to U+202E, U+2066 to U+
 
 ## Safety
 
-cliprobe runs the target in your current directory without a shell, with stdin closed (`/dev/null`; the stdin check also uses a pipe that it never writes to), a temporary `HOME`, and a minimal environment (no tokens from your shell). It still executes the program, so only probe programs you trust. By default cliprobe passes only the arguments you give, or `--version` and `--help`; only the baseline check, when you name it, adds an unknown flag. It kills each run's whole process group on timeout, including under a pseudo-terminal. It runs on macOS and Linux, including Alpine; the terminal checks need the `script` command, which Alpine ships in `util-linux-misc`. Windows isn't supported yet.
+cliprobe runs the target in your current directory without a shell, with stdin closed (`/dev/null`; the stdin check also uses a pipe that it never writes to), a temporary `HOME`, and a minimal environment (no tokens from your shell). It still executes the program, so only probe programs you trust. By default cliprobe passes only the arguments you give, or `--version` and `--help`; only the baseline check, when you name it, adds an unknown flag. The only input it ever sends is Ctrl-C, from the ctrl-c and restore checks, to probes you write. It kills each run's whole process group on timeout, including under a pseudo-terminal. It runs on macOS and Linux, including Alpine; the terminal checks need the `script` command, which Alpine ships in `util-linux-misc`. Windows isn't supported yet.
 
 ## License
 
