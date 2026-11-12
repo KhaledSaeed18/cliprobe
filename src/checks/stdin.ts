@@ -1,6 +1,7 @@
 import { stripEscapes } from '../core/ansi.ts';
+import { isLongRunning, markLongRunning } from '../core/long-running.ts';
 import { run, type RunResult } from '../core/run.ts';
-import type { Check, Judgement, Result } from '../core/types.ts';
+import type { Check, Context, Judgement, Result } from '../core/types.ts';
 
 /** How long the program gets with stdin left open before it counts as waiting. */
 export const STDIN_WAIT_MS = 3000;
@@ -88,7 +89,8 @@ async function stdinRuns(
     timeout: number
 ): Promise<StdinRuns> {
     const closed = await run(command, args, { timeout });
-    if (closed.spawnError || closed.timedOut) return { closed };
+    if (closed.timedOut) return { closed };
+    if (closed.spawnError) return { closed };
     const open = await run(command, args, { timeout: STDIN_WAIT_MS, stdin: 'open' });
     if (!open.timedOut) return { closed, open };
     const closing = await run(command, args, {
@@ -102,9 +104,22 @@ export async function stdinCheck(
     command: string,
     args: readonly string[],
     defaultProbe: boolean,
-    timeout: number
+    ctx: Context
 ): Promise<StdinResult> {
-    const runs = await stdinRuns(command, args, timeout);
+    // Another check already saw it keep running with stdin closed: nothing to learn here.
+    if (isLongRunning(ctx, command, args)) {
+        return {
+            check: 'stdin',
+            invocation: [command, ...args],
+            verdict: 'skip',
+            reason: "keeps running even with stdin closed, so stdin isn't what it waits for",
+            closedMs: null,
+            waitedForStdin: false,
+            finishedAfterCloseMs: null,
+        };
+    }
+    const runs = await stdinRuns(command, args, ctx.timeout);
+    if (runs.closed.timedOut) markLongRunning(ctx, command, args);
     const proven =
         runs.open?.timedOut === true && runs.closing !== undefined && !runs.closing.timedOut;
     return {
@@ -125,7 +140,7 @@ export const stdinCheckDefinition: Check = {
     async run(target, ctx) {
         const results: Result[] = [];
         for (const args of target.invocations) {
-            results.push(await stdinCheck(target.command, args, !target.explicit, ctx.timeout));
+            results.push(await stdinCheck(target.command, args, !target.explicit, ctx));
         }
         return results;
     },

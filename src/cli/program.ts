@@ -80,8 +80,9 @@ export async function run(argv: readonly string[], io: CliIO): Promise<number> {
                 : invocations,
             ...(fixture ? { fixtureDir: fixture.dir } : {}),
         };
+        const ctx = { timeout: opts.timeout, longRunning: new Set<string>() };
         for (const check of checks) {
-            results.push(...(await check.run(target, { timeout: opts.timeout })));
+            results.push(...(await check.run(target, ctx)));
         }
     } finally {
         fixture?.cleanup();

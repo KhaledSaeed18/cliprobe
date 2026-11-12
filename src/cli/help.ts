@@ -56,7 +56,9 @@ Options:
   -o, --output-file <path>
                      Write the --format report to a file (created atomically,
                      with parent folders); the human report still prints
-  --timeout <ms>     Kill a probe after this long (default 15000)
+  --timeout <ms>     Kill a probe after this long (default 15000). A command
+                     still running then (a server, a watcher) is judged on
+                     what it did so far, and later checks watch it for 3 s
   -h, --help         Show this help
   -v, --version      Show the version
 
