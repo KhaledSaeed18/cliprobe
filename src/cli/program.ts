@@ -68,13 +68,17 @@ export async function run(argv: readonly string[], io: CliIO): Promise<number> {
         return 2;
     }
 
-    const invocations = opts.args.length ? [opts.args] : [['--version'], ['--help']];
+    const invocations = opts.bare
+        ? [[]]
+        : opts.args.length
+          ? [opts.args]
+          : [['--version'], ['--help']];
     const fixture = usesFixture(opts.args) ? createFixture() : undefined;
     const results: Result[] = [];
     try {
         const target: Target = {
             command: opts.command,
-            explicit: opts.args.length > 0,
+            explicit: opts.bare || opts.args.length > 0,
             invocations: fixture
                 ? invocations.map((a) => expandFixture(a, fixture.dir))
                 : invocations,

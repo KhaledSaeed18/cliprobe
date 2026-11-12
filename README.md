@@ -28,7 +28,7 @@ stdin
   PASS   esbuild --help     finished without waiting for stdin
 
 ctrl-c
-  SKIP   esbuild            needs probe args that keep it running, such as a watch or serve command
+  SKIP   esbuild            needs probe args that keep it running, such as a watch or serve command, or --bare
 
 restore
   PASS   esbuild --version  left no terminal mode switched on when it exited
@@ -57,11 +57,13 @@ npx cliprobe -- node ./dist/cli.js list   # test your own CLI before publishing
 npx cliprobe --json -- <command>          # machine-readable results
 npx cliprobe --format junit -o report.xml -- <command>   # JUnit file for CI; human report on stdout
 npx cliprobe -- ls {fixture}              # {fixture}: a directory of hostile file names
+npx cliprobe --bare -- htop               # the command alone: a REPL, a full-screen program, a server
 npx cliprobe --check startup,baseline -- node ./dist/cli.js   # info checks, only when named
 ```
 
 | Option                       | Meaning                                                                                                                        |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `--bare`                     | Probe the command with no arguments instead of `--version` and `--help`, as a probe you wrote                                  |
 | `--check <name>`             | Run only this check; repeat it or use commas for several                                                                       |
 | `--format <name>`            | Output format: `human` (default), `json`, `markdown` (a GitHub job summary or PR comment) or `junit` (XML for CI test reports) |
 | `--json`                     | Same as `--format json`                                                                                                        |
@@ -237,7 +239,7 @@ Also escape U+2028, U+2029 and the bidi controls (U+202A to U+202E, U+2066 to U+
 
 ## Safety
 
-cliprobe runs the target in your current directory without a shell, with stdin closed (`/dev/null`; the stdin check also uses a pipe that it never writes to), a temporary `HOME`, and a minimal environment (no tokens from your shell). It still executes the program, so only probe programs you trust. By default cliprobe passes only the arguments you give, or `--version` and `--help`; only the baseline check, when you name it, adds an unknown flag. The only input it ever sends is Ctrl-C, from the ctrl-c and restore checks, to probes you write. It kills each run's whole process group on timeout, including under a pseudo-terminal. It runs on macOS and Linux, including Alpine; the terminal checks need the `script` command, which Alpine ships in `util-linux-misc`. Windows isn't supported yet.
+cliprobe runs the target in your current directory without a shell, with stdin closed (`/dev/null`; the stdin check also uses a pipe that it never writes to), a temporary `HOME`, and a minimal environment (no tokens from your shell). It still executes the program, so only probe programs you trust. By default cliprobe passes only the arguments you give, or `--version` and `--help`, or none with `--bare`; only the baseline check, when you name it, adds an unknown flag. The only input it ever sends is Ctrl-C, from the ctrl-c and restore checks, to probes you write. It kills each run's whole process group on timeout, including under a pseudo-terminal. It runs on macOS and Linux, including Alpine; the terminal checks need the `script` command, which Alpine ships in `util-linux-misc`. Windows isn't supported yet.
 
 ## License
 

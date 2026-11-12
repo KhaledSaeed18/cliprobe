@@ -8,6 +8,8 @@ export interface Options {
     /** Write the --format report here; the human report still goes to stdout. */
     outputFile: string | undefined;
     timeout: number;
+    /** Probe the command with no arguments, instead of --version and --help. */
+    bare: boolean;
     help: boolean;
     version: boolean;
     /** Check names from --check, in the order given; empty means all. */
@@ -21,6 +23,7 @@ export function parseArgs(argv: readonly string[]): Options {
         format: 'human',
         outputFile: undefined,
         timeout: 15000,
+        bare: false,
         help: false,
         version: false,
         checks: [],
@@ -34,6 +37,7 @@ export function parseArgs(argv: readonly string[]): Options {
             break;
         }
         if (a === '--json') opts.format = 'json';
+        else if (a === '--bare') opts.bare = true;
         else if (a === '-o' || a === '--output-file' || a.startsWith('--output-file=')) {
             const value = a.includes('=') ? a.slice(a.indexOf('=') + 1) : argv[++i];
             if (!value) throw new UsageError(`${a.split('=')[0] ?? a} needs a file path`);
@@ -70,6 +74,9 @@ export function parseArgs(argv: readonly string[]): Options {
             [opts.command, ...opts.args] = argv.slice(i);
             break;
         }
+    }
+    if (opts.bare && opts.args.length) {
+        throw new UsageError('--bare probes the command with no arguments, so give none after it');
     }
     return opts;
 }

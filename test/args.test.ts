@@ -74,3 +74,14 @@ describe('parseArgs --format', () => {
         expect(() => parseArgs(['--format'])).toThrow(UsageError);
     });
 });
+
+describe('parseArgs --bare', () => {
+    it('is off by default and on when given', () => {
+        expect(parseArgs(['node']).bare).toBe(false);
+        expect(parseArgs(['--bare', '--', 'node']).bare).toBe(true);
+    });
+
+    it('rejects probe args after the command, which --bare would ignore', () => {
+        expect(() => parseArgs(['--bare', '--', 'node', 'x.js'])).toThrow(/no arguments/);
+    });
+});
