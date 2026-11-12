@@ -1,3 +1,4 @@
+import { shellJoin } from '../core/quote.ts';
 import { safe } from '../core/safe.ts';
 import type { Result } from '../core/types.ts';
 import { countVerdicts, summaryLine } from './summary.ts';
@@ -34,7 +35,7 @@ function row(r: Result): string {
     const cells = [
         prose(r.check),
         verdict,
-        code(r.invocation.join(' '), { inTable: true }),
+        code(shellJoin(r.invocation), { inTable: true }),
         prose(r.reason) + evidence,
     ];
     return `| ${cells.join(' | ')} |`;

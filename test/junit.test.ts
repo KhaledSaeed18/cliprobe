@@ -108,7 +108,7 @@ describe('formatJunit', () => {
         expect(text).not.toContain('<injected/>');
         expect(text).not.toContain(ESC);
         const testcase = doc.testsuites.testsuite[0]?.testcase[0];
-        expect(testcase?.name).toBe('tool "><evil/> \\x1b]0;t\\x07');
+        expect(testcase?.name).toBe(`tool '"><evil/>' '\\x1b]0;t\\x07'`);
         expect(testcase?.failure?.message).toBe('could not start: a & b <c> ]]>');
         expect(testcase?.failure?.['#text']).toBe('</failure><injected/>\\x1b[2J');
     });
