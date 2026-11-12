@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.5.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.4.1...v0.5.0) (2026-11-12)
+
+### Features
+
+* add the restore check ([049bbd4](https://github.com/KhaledSaeed18/cliprobe/commit/049bbd49c26fe12c8adcd8168e2a0ce9fc2a7f17))
+* **core:** find terminal modes that output leaves switched on ([b2ed60a](https://github.com/KhaledSaeed18/cliprobe/commit/b2ed60a726e20d759b71e86212dd8b0a10ab3dbc))
+* **core:** look up a command on PATH ([beaf935](https://github.com/KhaledSaeed18/cliprobe/commit/beaf935220c2bf94c23eaabf31cd7ea4080f83ae))
+* **core:** type input into the pseudo-terminal ([a2db9fd](https://github.com/KhaledSaeed18/cliprobe/commit/a2db9fdef8ec5513ab210c55e099529a6f146530))
+
 ## [0.4.1](https://github.com/KhaledSaeed18/cliprobe/compare/v0.4.0...v0.4.1) (2026-11-12)
 
 ## [0.4.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.3.0...v0.4.0) (2026-11-11)
