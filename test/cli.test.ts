@@ -9,36 +9,16 @@ describe('cli', () => {
         expect(r.stdout).toMatch(/\\x1b\]0;pwned\\x07/);
     });
 
-    it('reports a missing command as could-not-run with exit 2', async () => {
-        const { status, report } = await probeJson(['cliprobe-no-such-command-xyz']);
-        expect(status).toBe(2);
-        expect(report.checks).toEqual([
-            'closed-pipe',
-            'color',
-            'pipe-escapes',
-            'stdin',
-            'ctrl-c',
-            'restore',
-            'control-chars',
-        ]);
-        // Every check that runs the program says it could not; control-chars, with no
-        // {fixture} to plant, skips without running it.
-        const verdicts = new Set(report.results.map((r) => `${r.check}:${r.verdict}`));
-        expect([...verdicts].sort()).toEqual([
-            'closed-pipe:error',
-            'color:error',
-            'control-chars:skip',
-            'ctrl-c:skip',
-            'pipe-escapes:error',
-            'restore:error',
-            'stdin:error',
-        ]);
+    it('says once that a missing command was not found, and exits 2', async () => {
+        const r = await cliprobe(['--json', '--', 'cliprobe-no-such-command-xyz', '{fixture}']);
+        expect(r.status).toBe(2);
+        expect(r.stdout).toBe('');
+        expect(r.stderr).toBe('cliprobe: command not found: cliprobe-no-such-command-xyz\n');
     });
 
-    it('exits 2 for a missing command even with {fixture}, when every check errors', async () => {
-        const { status, report } = await probeJson(['cliprobe-no-such-command-xyz', '{fixture}']);
-        expect(status).toBe(2);
-        expect(report.results.every((r) => r.verdict === 'error')).toBe(true);
+    it('finds a command given as a path', async () => {
+        const r = await cliprobe(['--check', 'closed-pipe', '--', process.execPath, '--version']);
+        expect(r.status).toBe(0);
     });
 
     it('lines up evidence under the reason when {fixture} is in the args', async () => {

@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
-import { cliprobe, first, fixture, probeJson } from './helpers/cli.ts';
+import { cliprobe, first, fixture, probeJson, runCheck } from './helpers/cli.ts';
 
 const node = process.execPath;
 const only = { checks: ['ctrl-c'] };
@@ -76,9 +76,8 @@ describe('ctrl-c: fixtures', () => {
     });
 
     it('reports a missing command as could-not-run', async () => {
-        expect((await probe(['cliprobe-no-such-command-xyz', 'watch'])).result.verdict).toBe(
-            'error'
-        );
+        const [result] = await runCheck('ctrl-c', ['cliprobe-no-such-command-xyz', 'watch']);
+        expect(result?.verdict).toBe('error');
     });
 
     it('skips once, without running anything, when there are no probe args', async () => {

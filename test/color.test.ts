@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { judgeColor } from '../src/checks/color.ts';
 import type { RunResult } from '../src/core/run.ts';
-import { cliprobe, first, fixture, probeJson } from './helpers/cli.ts';
+import { cliprobe, first, fixture, probeJson, runCheck } from './helpers/cli.ts';
 
 const node = process.execPath;
 const only = { checks: ['color'] };
@@ -75,8 +75,8 @@ describe('color: fixtures', () => {
     });
 
     it('reports a missing command as could-not-run', async () => {
-        const { report } = await probeJson(['cliprobe-no-such-command-xyz'], only);
-        expect(report.results.every((r) => r.verdict === 'error')).toBe(true);
+        const results = await runCheck('color', ['cliprobe-no-such-command-xyz']);
+        expect(results.map((r) => r.verdict)).toEqual(['error', 'error']);
     });
 });
 

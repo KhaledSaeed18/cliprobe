@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { median } from '../src/checks/startup.ts';
-import { cliprobe, first, fixture, probeJson } from './helpers/cli.ts';
+import { cliprobe, first, fixture, probeJson, runCheck } from './helpers/cli.ts';
 
 const node = process.execPath;
 const only = { checks: ['startup'], timeout: 10_000 };
@@ -46,10 +46,9 @@ describe('startup', () => {
         expect(r.reason).toContain('exited 1');
     });
 
-    it('reports a missing command as could-not-run, with exit 2', async () => {
-        const { status, report } = await probeJson(['cliprobe-no-such-command-xyz'], only);
-        expect(first(report).verdict).toBe('error');
-        expect(status).toBe(2);
+    it('reports a missing command as could-not-run', async () => {
+        const [result] = await runCheck('startup', ['cliprobe-no-such-command-xyz']);
+        expect(result?.verdict).toBe('error');
     });
 
     it('never fails, so the exit code stays 0', async () => {

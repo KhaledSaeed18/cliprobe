@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { UNKNOWN_FLAG } from '../src/checks/baseline.ts';
-import { cliprobe, fixture, probeJson } from './helpers/cli.ts';
+import { cliprobe, fixture, probeJson, runCheck } from './helpers/cli.ts';
 
 const node = process.execPath;
 const only = { checks: ['baseline'], timeout: 10_000 };
@@ -79,9 +79,9 @@ describe('baseline', () => {
         expect((JSON.parse(r.stdout) as { checks: string[] }).checks).not.toContain('baseline');
     });
 
-    it('reports a missing command as could-not-run, with exit 2', async () => {
-        const { status, report } = await probeJson(['cliprobe-no-such-command-xyz'], only);
-        expect(report.results.every((r) => r.verdict === 'error')).toBe(true);
-        expect(status).toBe(2);
+    it('reports a missing command as could-not-run', async () => {
+        const results = await runCheck('baseline', ['cliprobe-no-such-command-xyz']);
+        expect(results.length).toBeGreaterThan(0);
+        expect(results.every((r) => r.verdict === 'error')).toBe(true);
     });
 });
