@@ -1,6 +1,7 @@
 import { CHECKS, selectChecks } from '../checks/index.ts';
 import { collapseResults, createFixture, expandFixture, usesFixture } from '../core/fixture.ts';
 import { safe } from '../core/safe.ts';
+import { findCommand } from '../core/which.ts';
 import type { Result, Target } from '../core/types.ts';
 import { FORMATS, type Report } from '../report/index.ts';
 import { writeReportFile } from '../report/write.ts';
@@ -58,6 +59,12 @@ export async function run(argv: readonly string[], io: CliIO): Promise<number> {
     }
     if (io.platform === 'win32') {
         err('cliprobe: Windows is not supported yet (the closed-pipe check needs mkfifo).\n');
+        return 2;
+    }
+
+    // Every check would only say it could not start the command, so say it once.
+    if (findCommand(opts.command) === undefined) {
+        err(`cliprobe: command not found: ${safe(opts.command)}\n`);
         return 2;
     }
 

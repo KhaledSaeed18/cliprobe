@@ -70,7 +70,7 @@ npx cliprobe --check startup,baseline -- node ./dist/cli.js   # info checks, onl
 | `-h`, `--help`               | Show help                                                                                                                      |
 | `-v`, `--version`            | Show the version                                                                                                               |
 
-Exit codes: `0` no failures, `1` a check failed, `2` usage error or the command could not run. That makes it usable as a CI gate.
+Exit codes: `0` no failures, `1` a check failed, `2` usage error or the command could not run. A command that isn't on `PATH` is reported once, before any check runs, with exit `2` and no report. That makes it usable as a CI gate.
 
 ### In CI
 

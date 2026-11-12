@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { first, fixture, probeJson } from './helpers/cli.ts';
+import { first, fixture, probeJson, runCheck } from './helpers/cli.ts';
 
 const node = process.execPath;
 const only = { checks: ['stdin'], timeout: 5000 };
@@ -70,7 +70,8 @@ describe('stdin: probes the user wrote', () => {
     });
 
     it('reports a missing command as could-not-run', async () => {
-        expect((await one(['cliprobe-no-such-command-xyz'])).verdict).toBe('error');
+        const [result] = await runCheck('stdin', ['cliprobe-no-such-command-xyz']);
+        expect(result?.verdict).toBe('error');
     });
 });
 

@@ -1,6 +1,9 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { CHECKS } from '../../src/checks/index.ts';
 import { run } from '../../src/cli/program.ts';
+import { createFixture, expandFixture, usesFixture } from '../../src/core/fixture.ts';
+import type { Result } from '../../src/core/types.ts';
 
 export const ROOT: string = fileURLToPath(new URL('../..', import.meta.url));
 export const BIN: string = fileURLToPath(new URL('../../dist/cli.js', import.meta.url));
@@ -92,4 +95,33 @@ export function first(report: Report): JsonResult {
     const result = report.results[0];
     if (!result) throw new Error(`no results in report: ${JSON.stringify(report)}`);
     return result;
+}
+
+/**
+ * Runs one check directly, without the CLI around it: for cases the CLI stops
+ * before any check runs, such as a command that isn't on PATH.
+ */
+export async function runCheck(
+    name: string,
+    [command = '', ...args]: readonly string[],
+    timeout = 3000
+): Promise<Result[]> {
+    const check = CHECKS.find((c) => c.name === name);
+    if (!check) throw new Error(`no check named ${name}`);
+    const f = usesFixture(args) ? createFixture() : undefined;
+    try {
+        return await check.run(
+            {
+                command,
+                explicit: args.length > 0,
+                invocations: args.length
+                    ? [f ? expandFixture(args, f.dir) : args]
+                    : [['--version'], ['--help']],
+                ...(f ? { fixtureDir: f.dir } : {}),
+            },
+            { timeout }
+        );
+    } finally {
+        f?.cleanup();
+    }
 }

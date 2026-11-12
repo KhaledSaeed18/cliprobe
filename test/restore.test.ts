@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { judgeRestore } from '../src/checks/restore.ts';
 import type { PtyResult } from '../src/core/pty.ts';
-import { cliprobe, fixture, probeJson } from './helpers/cli.ts';
+import { cliprobe, fixture, probeJson, runCheck } from './helpers/cli.ts';
 
 const node = process.execPath;
 const only = { checks: ['restore'] };
@@ -77,7 +77,7 @@ describe('restore: real tools', () => {
     });
 
     it('reports a missing command as an error, not a pass', async () => {
-        const results = await probe(['cliprobe-no-such-command-xyz']);
+        const results = await runCheck('restore', ['cliprobe-no-such-command-xyz']);
         expect(results.map((r) => [r.verdict, r.reason])).toEqual([
             ['error', 'could not start: command not found'],
             ['error', 'could not start: command not found'],

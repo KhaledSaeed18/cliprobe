@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cliprobe, first, fixture, probeJson } from './helpers/cli.ts';
+import { cliprobe, first, fixture, probeJson, runCheck } from './helpers/cli.ts';
 
 const node = process.execPath;
 const only = { checks: ['control-chars'] };
@@ -76,9 +76,11 @@ describe('control-chars: fixtures', () => {
     });
 
     it('reports a missing command as could-not-run', async () => {
-        expect((await probe(['cliprobe-no-such-command-xyz', '{fixture}'])).result.verdict).toBe(
-            'error'
-        );
+        const [result] = await runCheck('control-chars', [
+            'cliprobe-no-such-command-xyz',
+            '{fixture}',
+        ]);
+        expect(result?.verdict).toBe('error');
     });
 
     it('keeps every hostile character out of its own human and JSON output', async () => {

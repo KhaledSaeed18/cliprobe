@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { first, fixture, probeJson } from './helpers/cli.ts';
+import { first, fixture, probeJson, runCheck } from './helpers/cli.ts';
 
 const node = process.execPath;
 const only = { checks: ['pipe-escapes'] };
@@ -51,7 +51,8 @@ describe('pipe-escapes: fixtures', () => {
     });
 
     it('reports a missing command as could-not-run', async () => {
-        expect((await probe(['cliprobe-no-such-command-xyz'])).result.verdict).toBe('error');
+        const [result] = await runCheck('pipe-escapes', ['cliprobe-no-such-command-xyz']);
+        expect(result?.verdict).toBe('error');
     });
 });
 
