@@ -55,6 +55,27 @@ describe('pipe-escapes: fixtures', () => {
     });
 });
 
+describe('pipe-escapes: {fixture} names', () => {
+    it('leaves raw file names in a pipe to control-chars, so a plain lister passes', async () => {
+        const { result } = await probe([node, fixture('control-chars/raw'), '{fixture}']);
+        expect(result.verdict).toBe('pass');
+    });
+
+    it("still warns on the program's own control codes next to the names", async () => {
+        const { result } = await probe([
+            node,
+            fixture('pipe-escapes/names-and-spinner'),
+            '{fixture}',
+        ]);
+        expect(result.verdict).toBe('warn');
+        expect(result.evidence).toMatch(/^stderr line 1: /);
+    });
+
+    it('passes ls {fixture}, which prints names raw into a pipe by design', async () => {
+        expect((await probe(['ls', '{fixture}'])).result.verdict).toBe('pass');
+    });
+});
+
 describe('pipe-escapes: real tools pass', () => {
     it.each([
         ['printf', ['printf', 'hello\\n']],

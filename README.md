@@ -126,7 +126,7 @@ Many classic tools (git, BSD `ls` and `grep`) color correctly but don't implemen
 | `WARN`  | One or more reached stdout or stderr; the reason lists which kinds         |
 | `SKIP`  | Printed nothing                                                            |
 
-It only warns for now, never fails. In the census of the top 100 npm CLIs, no `--help` or `--version` printed any of these codes, which says nothing about their spinners: probe a command that does real work, such as an install or a build.
+It only warns for now, never fails. In the census of the top 100 npm CLIs, no `--help` or `--version` printed any of these codes, which says nothing about their spinners: probe a command that does real work, such as an install or a build. With `{fixture}` in the args, the hostile file names themselves are left to the control-chars check: a lister that prints them raw into a pipe, as `ls` does, isn't warned about.
 
 **stdin**. Agents and CI runners often start a command with stdin as a pipe that stays open and never receives anything. A program that reads stdin, or asks a question, then waits forever. cliprobe runs the command three ways: with stdin closed (`/dev/null`), with an open pipe, and, if that hangs for 3 seconds, with a pipe it closes after 1 second. Finishing right after the close proves stdin was the cause. Results:
 
