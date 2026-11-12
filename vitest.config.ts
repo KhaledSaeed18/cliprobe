@@ -16,7 +16,7 @@ const config: ViteUserConfig = defineConfig({
             // A ratchet just under what macOS and Linux both reach today (the
             // PTY flavor detection covers a different branch on each); raise it
             // as coverage grows, never lower it.
-            thresholds: { statements: 94, branches: 84, functions: 100, lines: 95 },
+            thresholds: { statements: 94, branches: 85, functions: 100, lines: 95 },
         },
     },
 });
