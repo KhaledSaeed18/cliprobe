@@ -7,7 +7,7 @@ npx cliprobe -- esbuild
 ```
 
 ```
-cliprobe 0.5.0: closed-pipe, color, pipe-escapes, stdin, ctrl-c, restore, control-chars checks for esbuild
+cliprobe 0.6.0: closed-pipe, color, pipe-escapes, stdin, ctrl-c, restore, control-chars checks for esbuild
 
 closed-pipe
   FAIL   esbuild --version  crashed when stdout was closed (exit 0 -> 1)
