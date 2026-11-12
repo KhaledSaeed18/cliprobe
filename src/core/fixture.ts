@@ -1,6 +1,7 @@
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { Result } from './types.ts';
 
 /** Written in probe arguments; replaced with the path of a directory of hostile file names. */
 export const FIXTURE_PLACEHOLDER = '{fixture}';
@@ -115,4 +116,44 @@ export function collapseFixture(text: string, fixture: Fixture): string {
     return text
         .replaceAll(fixture.realDir, FIXTURE_PLACEHOLDER)
         .replaceAll(fixture.dir, FIXTURE_PLACEHOLDER);
+}
+
+/**
+ * Removes the hostile names' dangerous parts from output, for checks other than
+ * control-chars: a lister that prints them raw into a pipe is doing its job, and
+ * control-chars judges how they reach a terminal.
+ */
+export function withoutHostileNames(text: string): string {
+    let out = text;
+    for (const { marker } of HOSTILE_NAMES) out = out.replaceAll(marker, '');
+    return out;
+}
+
+function collapseValue(value: unknown, fixture: Fixture): unknown {
+    if (typeof value === 'string') return collapseFixture(value, fixture);
+    if (Array.isArray(value)) return value.map((v: unknown) => collapseValue(v, fixture));
+    if (value && typeof value === 'object' && !Buffer.isBuffer(value)) {
+        return Object.fromEntries(
+            Object.entries(value).map(([k, v]) => [k, collapseValue(v, fixture)])
+        );
+    }
+    return value;
+}
+
+/** collapseFixture applied to every string in the results: invocation, reason, evidence and data. */
+export function collapseResults(results: readonly Result[], fixture: Fixture): Result[] {
+    return results.map((r) => {
+        const data = Object.fromEntries(
+            Object.entries(r).map(([k, v]) => [k, collapseValue(v, fixture)])
+        );
+        const c = (text: string): string => collapseFixture(text, fixture);
+        return {
+            ...data,
+            check: r.check,
+            invocation: r.invocation.map(c),
+            verdict: r.verdict,
+            reason: c(r.reason),
+            ...(r.evidence === undefined ? {} : { evidence: c(r.evidence) }),
+        };
+    });
 }

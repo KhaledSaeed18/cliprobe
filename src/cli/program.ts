@@ -1,5 +1,5 @@
 import { CHECKS, selectChecks } from '../checks/index.ts';
-import { collapseFixture, createFixture, expandFixture, usesFixture } from '../core/fixture.ts';
+import { collapseResults, createFixture, expandFixture, usesFixture } from '../core/fixture.ts';
 import { safe } from '../core/safe.ts';
 import type { Result, Target } from '../core/types.ts';
 import { FORMATS, type Report } from '../report/index.ts';
@@ -79,29 +79,26 @@ export async function run(argv: readonly string[], io: CliIO): Promise<number> {
     } finally {
         fixture?.cleanup();
     }
-    // Report the placeholder, not a temporary path that no longer exists.
-    const collapse = (text: string): string => (fixture ? collapseFixture(text, fixture) : text);
+    // Report the placeholder, not a temporary path that no longer exists. Collapse
+    // before formatting, so column widths fit the text that is shown.
     const report: Report = {
         version: VERSION,
         command: opts.command,
         checks: checks.map((c) => c.name),
-        results,
+        results: fixture ? collapseResults(results, fixture) : results,
     };
     const { color } = io;
     if (opts.outputFile) {
         try {
-            writeReportFile(
-                opts.outputFile,
-                collapse(FORMATS[opts.format](report, { color: false }))
-            );
+            writeReportFile(opts.outputFile, FORMATS[opts.format](report, { color: false }));
         } catch (error) {
             const reason = error instanceof Error ? error.message : String(error);
             err(`cliprobe: could not write ${safe(opts.outputFile)}: ${safe(reason)}\n`);
             return 2;
         }
-        out(collapse(FORMATS.human(report, { color })));
+        out(FORMATS.human(report, { color }));
     } else {
-        out(collapse(FORMATS[opts.format](report, { color })));
+        out(FORMATS[opts.format](report, { color }));
     }
     return exitCodeFor(results);
 }

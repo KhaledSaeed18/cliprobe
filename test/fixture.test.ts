@@ -4,11 +4,13 @@ import { join } from 'node:path';
 import { describe, expect, it, onTestFinished } from 'vitest';
 import {
     collapseFixture,
+    collapseResults,
     createFixture,
     expandFixture,
     HOSTILE_NAMES,
     PLAIN_NAME,
     usesFixture,
+    withoutHostileNames,
 } from '../src/core/fixture.ts';
 import { fixture, probeJson } from './helpers/cli.ts';
 
@@ -61,5 +63,48 @@ describe('placeholder', () => {
         expect(seen).toMatch(/cliprobe-fixture-/);
         expect(existsSync(seen)).toBe(false);
         expect(report.results[0]?.invocation.slice(2)).toEqual(['{fixture}', out]);
+    });
+});
+
+describe('withoutHostileNames', () => {
+    it("removes each name's dangerous part and keeps the rest", () => {
+        const text = HOSTILE_NAMES.map((h) => h.name).join('\n');
+        const out = withoutHostileNames(text);
+        for (const h of HOSTILE_NAMES) expect(out).not.toContain(h.marker);
+        expect(out).toContain('title-.txt');
+        expect(withoutHostileNames('plain\r')).toBe('plain\r');
+    });
+});
+
+describe('collapseResults', () => {
+    it('collapses the path in every string of a result, leaving other values alone', () => {
+        const f = createFixture();
+        onTestFinished(() => f.cleanup());
+        const result = {
+            check: 'control-chars',
+            invocation: ['ls', f.dir],
+            verdict: 'pass' as const,
+            reason: 'ok',
+            evidence: `in ${f.realDir}/x`,
+            data: { n: 3, ok: true, none: null, list: [`${f.dir}/a`] },
+        };
+        const { evidence: _evidence, ...bare } = result;
+        expect(collapseResults([result, bare], f)).toEqual([
+            {
+                check: 'control-chars',
+                invocation: ['ls', '{fixture}'],
+                verdict: 'pass',
+                reason: 'ok',
+                evidence: 'in {fixture}/x',
+                data: { n: 3, ok: true, none: null, list: ['{fixture}/a'] },
+            },
+            {
+                check: 'control-chars',
+                invocation: ['ls', '{fixture}'],
+                verdict: 'pass',
+                reason: 'ok',
+                data: { n: 3, ok: true, none: null, list: ['{fixture}/a'] },
+            },
+        ]);
     });
 });
