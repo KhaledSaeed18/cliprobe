@@ -46,12 +46,13 @@ describe('baseline', () => {
             verdict: 'info',
             reason: 'exited 2 with its message on stderr',
         });
-        expect(unknown?.evidence).toContain('unknown option');
+        expect(unknown?.evidence).toMatch(/^stderr: .*unknown option/);
     });
 
     it('describes each broken convention', async () => {
         const [version, help, unknown] = await probe('unconventional');
         expect(version?.reason).toMatch(/printed 2 lines to stdout/);
+        expect(version?.evidence).toMatch(/^first line: /);
         expect(help?.reason).toMatch(/printed help to stderr and exited 1/);
         expect(unknown?.reason).toMatch(/exited 0, so a script cannot tell the flag was wrong/);
     });
