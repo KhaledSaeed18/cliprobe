@@ -31,6 +31,8 @@ export interface Target {
 export interface Context {
     /** Kill a single probe run after this many milliseconds. */
     timeout: number;
+    /** Probes that a check saw still running at the timeout; see core/long-running.ts. */
+    longRunning?: Set<string>;
 }
 
 export interface Check {

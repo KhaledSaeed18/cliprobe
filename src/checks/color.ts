@@ -1,7 +1,8 @@
 import { findStyle, type StyleHit } from '../core/ansi.ts';
 import { ptySupport, runPty, type PtyResult } from '../core/pty.ts';
+import { markLongRunning, probeTimeout, stillRunning } from '../core/long-running.ts';
 import { run, type RunResult } from '../core/run.ts';
-import type { Check, Judgement, Result } from '../core/types.ts';
+import type { Check, Context, Judgement, Result } from '../core/types.ts';
 
 /**
  * Every color run gets a terminal type that supports color, so a program cannot
@@ -31,7 +32,7 @@ const describeHit = (stream: string, hit: StyleHit): string =>
 /** The first verdict the pipe run alone can settle, if any. */
 function judgePipe(pipe: RunResult): Judgement | undefined {
     if (pipe.spawnError) return { verdict: 'error', reason: `could not start: ${pipe.spawnError}` };
-    if (pipe.timedOut) return { verdict: 'error', reason: 'timed out on a normal run' };
+    // A program still running at the timeout is judged on what it printed by then.
     const stdoutHit = findStyle(pipe.stdout.toString('utf8'));
     if (stdoutHit) {
         return {
@@ -46,6 +47,12 @@ function judgePipe(pipe: RunResult): Judgement | undefined {
             verdict: 'warn',
             reason: 'printed color codes to stderr when it was a pipe',
             evidence: describeHit('stderr', stderrHit),
+        };
+    }
+    if (pipe.timedOut) {
+        return {
+            verdict: 'skip',
+            reason: `${stillRunning(pipe.durationMs)} with no color in a pipe so far; a terminal is compared only for a command that finishes`,
         };
     }
     return undefined;
@@ -95,9 +102,14 @@ export function judgeColor(runs: ColorRuns): Judgement {
 async function colorRuns(
     command: string,
     args: readonly string[],
-    timeout: number
+    ctx: Context
 ): Promise<ColorRuns> {
-    const pipe = await run(command, args, { timeout, env: COLOR_ENV });
+    const { timeout } = ctx;
+    const pipe = await run(command, args, {
+        timeout: probeTimeout(ctx, command, args),
+        env: COLOR_ENV,
+    });
+    if (pipe.timedOut) markLongRunning(ctx, command, args);
     if (judgePipe(pipe)) return { pipe };
     const support = ptySupport();
     if (!support.ok) return { pipe, noPty: support.reason };
@@ -115,9 +127,9 @@ const summarize = (r: PtyResult | undefined): ColorResult['tty'] =>
 export async function color(
     command: string,
     args: readonly string[],
-    timeout: number
+    ctx: Context
 ): Promise<ColorResult> {
-    const runs = await colorRuns(command, args, timeout);
+    const runs = await colorRuns(command, args, ctx);
     return {
         check: 'color',
         invocation: [command, ...args],
@@ -139,7 +151,7 @@ export const colorCheck: Check = {
     async run(target, ctx) {
         const results: Result[] = [];
         for (const args of target.invocations) {
-            results.push(await color(target.command, args, ctx.timeout));
+            results.push(await color(target.command, args, ctx));
         }
         return results;
     },

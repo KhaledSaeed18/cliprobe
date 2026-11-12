@@ -1,7 +1,8 @@
 import { CONTROL_LABELS, type ControlHit, type ControlKind, findControls } from '../core/ansi.ts';
 import { withoutHostileNames } from '../core/fixture.ts';
+import { markLongRunning, probeTimeout, stillRunning } from '../core/long-running.ts';
 import { run, type RunResult } from '../core/run.ts';
-import type { Check, Judgement, Result } from '../core/types.ts';
+import type { Check, Context, Judgement, Result } from '../core/types.ts';
 
 /** As in the color check: a capable TERM, so a program can't pass by seeing TERM=dumb, and no CI. */
 const ENV = { TERM: 'xterm-256color', CI: undefined } as const;
@@ -25,7 +26,6 @@ function listLabels(kinds: readonly ControlKind[]): string {
 
 export function judgePipeEscapes(r: RunResult): Judgement {
     if (r.spawnError) return { verdict: 'error', reason: `could not start: ${r.spawnError}` };
-    if (r.timedOut) return { verdict: 'error', reason: 'timed out on a normal run' };
     const stdout = r.stdout.toString('utf8');
     const outHits = findControls(stdout);
     const errHits = findControls(r.stderr);
@@ -41,7 +41,19 @@ export function judgePipeEscapes(r: RunResult): Judgement {
         };
     }
     if (!stdout && !r.stderr) {
-        return { verdict: 'skip', reason: 'printed nothing, so there is nothing to check' };
+        return r.timedOut
+            ? {
+                  verdict: 'skip',
+                  reason: `${stillRunning(r.durationMs)} and printed nothing so far`,
+              }
+            : { verdict: 'skip', reason: 'printed nothing, so there is nothing to check' };
+    }
+    // A program still running at the timeout is judged on what it printed by then.
+    if (r.timedOut) {
+        return {
+            verdict: 'pass',
+            reason: `no cursor, erase, hyperlink, title or redraw codes in a pipe (${stillRunning(r.durationMs)})`,
+        };
     }
     return {
         verdict: 'pass',
@@ -52,11 +64,12 @@ export function judgePipeEscapes(r: RunResult): Judgement {
 export async function pipeEscapes(
     command: string,
     args: readonly string[],
-    timeout: number,
+    ctx: Context,
     /** True when the args hold {fixture}: its file names are control-chars' to judge, not ours. */
     fixture = false
 ): Promise<PipeEscapesResult> {
-    const raw = await run(command, args, { timeout, env: ENV });
+    const raw = await run(command, args, { timeout: probeTimeout(ctx, command, args), env: ENV });
+    if (raw.timedOut) markLongRunning(ctx, command, args);
     const r = fixture
         ? {
               ...raw,
@@ -81,12 +94,7 @@ export const pipeEscapesCheck: Check = {
         const results: Result[] = [];
         for (const args of target.invocations) {
             results.push(
-                await pipeEscapes(
-                    target.command,
-                    args,
-                    ctx.timeout,
-                    target.fixtureDir !== undefined
-                )
+                await pipeEscapes(target.command, args, ctx, target.fixtureDir !== undefined)
             );
         }
         return results;

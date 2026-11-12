@@ -66,7 +66,7 @@ npx cliprobe --check startup,baseline -- node ./dist/cli.js   # info checks, onl
 | `--format <name>`            | Output format: `human` (default), `json`, `markdown` (a GitHub job summary or PR comment) or `junit` (XML for CI test reports) |
 | `--json`                     | Same as `--format json`                                                                                                        |
 | `-o`, `--output-file <path>` | Write the `--format` report to a file (atomically, creating parent folders); the human report still prints                     |
-| `--timeout <ms>`             | Kill a probe after this long (default 15000)                                                                                   |
+| `--timeout <ms>`             | Kill a probe after this long (default 15000); a command still running then is judged on what it did so far                     |
 | `-h`, `--help`               | Show help                                                                                                                      |
 | `-v`, `--version`            | Show the version                                                                                                               |
 
@@ -98,14 +98,16 @@ In JUnit, each check is a test suite and each probe a test case: `FAIL` is a fai
 
 A default run does the seven checks below: closed-pipe, color, pipe-escapes, stdin, ctrl-c, restore and control-chars. Each one reports evidence, never a score. Two info checks, startup and baseline, run only when you name them with `--check`.
 
+A command that keeps running, such as a server, a watcher or a full-screen program, is what ctrl-c and restore need. The other checks judge it on what it did before the timeout (`--timeout`, 15 seconds by default): a crash once stdout is closed warns (for now; it becomes a failure once calibrated against real servers), color or a spinner in a pipe still counts, and stdin is skipped. The timeout is paid once: after the first check sees the command still running, the others watch it for 3 seconds.
+
 **closed-pipe**. cliprobe runs the command twice: once normally, then with stdout set to a pipe whose reading end is already closed, so the first write fails every time, even for fast native programs. Results:
 
-| Verdict | Meaning                                                                        |
-| ------- | ------------------------------------------------------------------------------ |
-| `PASS`  | Exited quietly, or was stopped by SIGPIPE (the Unix convention)                |
-| `FAIL`  | Printed an EPIPE error or stack trace and changed its exit code, or hung       |
-| `WARN`  | Printed a write error but kept its exit code                                   |
-| `SKIP`  | Wrote nothing to stdout for this invocation, so pass args that print something |
+| Verdict | Meaning                                                                                                |
+| ------- | ------------------------------------------------------------------------------------------------------ |
+| `PASS`  | Exited quietly, or was stopped by SIGPIPE (the Unix convention), or kept running without a write error |
+| `FAIL`  | Printed an EPIPE error or stack trace and changed its exit code, or hung                               |
+| `WARN`  | Printed a write error but kept its exit code, or crashed on it while a normal run kept running         |
+| `SKIP`  | Wrote nothing to stdout for this invocation (or before the timeout), so pass args that print something |
 
 **color**. cliprobe runs the command up to three times: into a pipe, under a real terminal (a pseudo-terminal through the system's `script` command, 80×24), and under a terminal with `NO_COLOR=1`. Every run gets `TERM=xterm-256color` and no `CI` variable, so a program can't pass just because the terminal type looks colorless, and color libraries that force color in CI don't fail it. Color codes in piped output end up in log files and agent transcripts as `\x1b[31m` noise. Results:
 
