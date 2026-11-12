@@ -32,6 +32,7 @@ describe('selectChecks', () => {
             'pipe-escapes',
             'stdin',
             'ctrl-c',
+            'restore',
             'control-chars',
         ]);
     });
