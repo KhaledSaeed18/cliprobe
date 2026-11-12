@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.7.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.6.0...v0.7.0) (2026-11-12)
+
+### Features
+
+* **closed-pipe:** fail a command that keeps running and crashes on a closed stdout ([bdf6fba](https://github.com/KhaledSaeed18/cliprobe/commit/bdf6fba1373dd888da56f415ef9f5335eff00bef))
+
 ## [0.6.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.5.0...v0.6.0) (2026-11-12)
 
 ### Features
