@@ -1,5 +1,13 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import {
+    closeSync,
+    constants,
+    mkdtempSync,
+    openSync,
+    readFileSync,
+    rmSync,
+    writeSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { run } from './run.ts';
@@ -100,6 +108,11 @@ export interface PtyOptions {
     timeout: number;
     /** Changes to the minimal environment; `undefined` removes a variable. */
     env?: Readonly<Record<string, string | undefined>>;
+    /**
+     * Type `data` into the terminal after a delay, as on a keyboard. stdin is then
+     * a terminal that stays open, instead of one that reads a single EOF.
+     */
+    input?: { data: string; afterMs: number };
 }
 
 export interface PtyResult {
@@ -116,24 +129,70 @@ export interface PtyResult {
     spawnError?: string;
     /** Anything script(1) itself printed on its own stderr. */
     scriptStderr: string;
+    /** True when the output passed run()'s 1 MiB cap, so its end is missing. */
+    truncated: boolean;
+    /** When `options.input` was typed, in milliseconds after start; absent if the program exited first. */
+    inputSentMs?: number;
 }
 
 /**
  * Runs a program with stdin, stdout and stderr on a PTY, an 80x24 window and
- * TERM=xterm-256color. stdin is /dev/null behind the PTY: the program reads one
- * EOF, and a second read blocks until the timeout.
+ * TERM=xterm-256color. Without `input`, stdin is /dev/null behind the PTY: the
+ * program reads one EOF, and a second read blocks until the timeout. With it,
+ * the terminal's line discipline handles what is typed, so Ctrl-C (\x03) becomes
+ * SIGINT for the program, or a keypress if the program turned that off.
  */
 export async function runPty(
     command: string,
     args: readonly string[],
-    { timeout, env = {} }: PtyOptions
+    { timeout, env = {}, input }: PtyOptions
 ): Promise<PtyResult> {
     const support = ptySupport();
     if (!support.ok) throw new Error(`no PTY: ${support.reason}`);
     const dir = mkdtempSync(join(tmpdir(), 'cliprobe-pty-'));
     const pidFile = join(dir, 'pid');
+    let launcher = 'script';
+    let argv = ptyArgs(support.flavor, pidFile, command, args);
+    let keyboard: number | undefined;
+    let inputSentMs: number | undefined;
+    let typeTimer: NodeJS.Timeout | undefined;
+    let watchTimer: NodeJS.Timeout | undefined;
+    const closeKeyboard = (): void => {
+        if (keyboard !== undefined) closeSync(keyboard);
+        keyboard = undefined;
+    };
+    const start = performance.now();
+    if (input) {
+        // script(1) types what arrives on its stdin into the terminal. BSD script
+        // refuses a socket there, and on macOS both Node's pipes and FIFOs are
+        // sockets, so a real pipe from cat feeds it. cliprobe holds the FIFO open
+        // read-write, so cat never sees EOF early and a write never fails.
+        const fifo = join(dir, 'keyboard');
+        execFileSync('mkfifo', [fifo]);
+        keyboard = openSync(fifo, constants.O_RDWR);
+        argv = [
+            '-c',
+            'cat -- "$1" 2>/dev/null | { shift; exec script "$@"; }',
+            'sh',
+            fifo,
+            ...argv,
+        ];
+        launcher = '/bin/sh';
+        typeTimer = setTimeout(() => {
+            if (programState(pidFile) !== 'running') return;
+            inputSentMs = Math.round(performance.now() - start);
+            if (keyboard !== undefined) writeSync(keyboard, input.data);
+        }, input.afterMs);
+        // BSD script waits for EOF on its stdin even after the program exits, so
+        // once the program is gone, end the keyboard: cat exits, then script.
+        watchTimer = setInterval(() => {
+            if (programState(pidFile) !== 'gone') return;
+            clearInterval(watchTimer);
+            closeKeyboard();
+        }, EXIT_POLL_MS);
+    }
     try {
-        const result = await run('script', ptyArgs(support.flavor, pidFile, command, args), {
+        const result = await run(launcher, argv, {
             timeout,
             // An empty SHELL breaks util-linux script; BSD script ignores it.
             env: { TERM: 'xterm-256color', SHELL: '/bin/sh', ...env },
@@ -147,17 +206,51 @@ export async function runPty(
             timedOut: result.timedOut,
             ...(result.spawnError === undefined ? {} : { spawnError: result.spawnError }),
             scriptStderr: result.stderr,
+            truncated: result.stdoutBytes > result.stdout.length,
+            ...(inputSentMs === undefined ? {} : { inputSentMs }),
         };
     } finally {
+        clearTimeout(typeTimer);
+        clearInterval(watchTimer);
+        closeKeyboard();
         rmSync(dir, { recursive: true, force: true });
     }
 }
 
-function killGroupFromPidFile(pidFile: string): void {
+/** How often to look for the end of a program that is being typed to. */
+const EXIT_POLL_MS = 50;
+
+function programGroup(pidFile: string): number | undefined {
     try {
         const pid = Number(readFileSync(pidFile, 'utf8').trim());
-        if (Number.isInteger(pid) && pid > 1) process.kill(-pid, 'SIGKILL');
+        return Number.isInteger(pid) && pid > 1 ? pid : undefined;
     } catch {
-        // Not started yet, or already gone; killing script's group still follows.
+        return undefined; // not written yet
+    }
+}
+
+/**
+ * Whether the program under the PTY has started, is running, or has exited.
+ * Asks about the program itself, which script(1) reaps, not its group: a child
+ * it left behind can stay a zombie for good where nothing reaps orphans, as in
+ * a container without an init process.
+ */
+function programState(pidFile: string): 'starting' | 'running' | 'gone' {
+    const pid = programGroup(pidFile);
+    if (pid === undefined) return 'starting';
+    try {
+        process.kill(pid, 0);
+        return 'running';
+    } catch {
+        return 'gone';
+    }
+}
+
+function killGroupFromPidFile(pidFile: string): void {
+    const pid = programGroup(pidFile);
+    try {
+        if (pid !== undefined) process.kill(-pid, 'SIGKILL');
+    } catch {
+        // Already gone; killing script's group still follows.
     }
 }

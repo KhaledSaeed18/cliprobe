@@ -152,6 +152,42 @@ describe('runPty', () => {
         expect(await isDead(pid)).toBe(true);
     });
 
+    it('types input into the terminal, where Ctrl-C becomes SIGINT', async () => {
+        const start = performance.now();
+        const r = await runPty('sleep', ['10'], {
+            timeout: 5000,
+            input: { data: '\x03', afterMs: 300 },
+        });
+        expect(r.timedOut).toBe(false);
+        expect(r.inputSentMs).toBeGreaterThanOrEqual(300);
+        expect(performance.now() - start).toBeLessThan(3000);
+    });
+
+    it('delivers Ctrl-C as a key to a program in raw mode', async () => {
+        const r = await runPty(node, [fixture('restore/raw-key-restores')], {
+            timeout: 5000,
+            input: { data: '\x03', afterMs: 500 },
+        });
+        expect(r.timedOut).toBe(false);
+        expect(r.output).toContain('\x1b[?1049l');
+    });
+
+    it('types nothing to a program that already exited, and ends with it', async () => {
+        const start = performance.now();
+        const r = await runPty('printf', ['done'], {
+            timeout: 5000,
+            input: { data: '\x03', afterMs: 1000 },
+        });
+        expect(r.output).toBe('done');
+        expect(r.inputSentMs).toBeUndefined();
+        expect(performance.now() - start).toBeLessThan(1000);
+    });
+
+    it('says when the output passed the 1 MiB cap', async () => {
+        const r = await runPty(node, [fixture('big')], { timeout: 10_000 });
+        expect(r.truncated).toBe(true);
+    });
+
     it('returns a non-zero exit for a missing command instead of throwing', async () => {
         const r = await runPty('/no/such/command', [], { timeout: 10_000 });
         expect(r.exitCode).not.toBe(0);
