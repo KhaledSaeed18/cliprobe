@@ -76,5 +76,5 @@ Search the repo for the old wording or numbers (`rg "six checks"`) before you pu
 - Type Ctrl-C into the PTY (`\x03`) rather than sending SIGINT when it should behave like a keypress: a program in raw mode (prompts, full-screen views) never gets SIGINT from a terminal, only the key, and signalling it gives false results.
 - On macOS, Node's stdio pipes and FIFOs are sockets, and BSD `script(1)` refuses a socket as stdin, so typed input reaches it through `cat`. BSD `script` also waits for EOF on stdin after the program exits.
 - A check that tests the could-not-start path can't go through the CLI, which stops early on a missing command: use `runCheck()` from `test/helpers/cli.ts`.
-- A new way for an existing check to fail is a new check for the "no false fails" rule: it starts as a warn until calibrated (the closed-pipe crash of a command that keeps running is one, from 0.6).
+- A new way for an existing check to fail is a new check for the "no false fails" rule: it starts as a warn until calibrated (the closed-pipe crash of a command that keeps running was one: a warn in 0.6, a fail once 38 watch and serve probes showed no false ones).
 - In a container without an init process, orphans stay zombies in their process group forever: to learn whether a program has exited, ask about its PID, not its group.

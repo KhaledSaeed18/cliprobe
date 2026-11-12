@@ -9,10 +9,10 @@ const checks = ['closed-pipe', 'color', 'pipe-escapes', 'stdin'];
 const probe = (name: string) => probeJson(long(name), { checks, timeout: 1500 });
 
 describe('long-running probes: judged on what they did before the timeout', () => {
-    it('warns on a server that crashes once its stdout is closed', async () => {
+    it('fails a server that crashes once its stdout is closed', async () => {
         const { status, report } = await probe('logger');
         expect(verdicts(report)).toEqual([
-            'closed-pipe:warn',
+            'closed-pipe:fail',
             'color:skip',
             'pipe-escapes:pass',
             'stdin:skip',
@@ -21,7 +21,7 @@ describe('long-running probes: judged on what they did before the timeout', () =
         expect(report.results[0]?.evidence).toMatch(/EPIPE/);
         expect(report.results[1]?.reason).toMatch(/^still running after \d+ s with no color/);
         expect(report.results[3]?.reason).toMatch(/keeps running even with stdin closed/);
-        expect(status).toBe(0);
+        expect(status).toBe(1);
     });
 
     it('passes a server that ignores the closed stdout and keeps running', async () => {

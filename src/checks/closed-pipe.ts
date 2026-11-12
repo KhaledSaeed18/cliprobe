@@ -27,10 +27,10 @@ const newWriteError = (base: RunResult, closed: RunResult): boolean =>
  * to compare with, but a crash once stdout is closed is still a crash.
  */
 export function judgeLongRunning(base: RunResult, closed: RunResult): Judgement {
-    // Warn-only until calibrated against real servers and watchers (product rule: no false fails).
+    // Calibrated 2026-11-12: 9 of 38 watch and serve probes crashed, each reproduced by hand, none falsely.
     if (!closed.timedOut && newWriteError(base, closed)) {
         return {
-            verdict: 'warn',
+            verdict: 'fail',
             reason: `crashed when stdout was closed, while a normal run kept running (exit ${closed.exitCode})`,
             evidence: crashEvidence(closed.stderr),
         };
