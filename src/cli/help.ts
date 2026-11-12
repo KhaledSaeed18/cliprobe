@@ -29,6 +29,11 @@ Checks:
                 running 3 s later or prints a stack trace; warns if it exits 0.
                 Skipped when the command finishes first, so probe a command
                 that keeps running (a watcher, a server, a long task).
+  restore       Runs the command under a terminal and, for your own probes,
+                types Ctrl-C after 1 s, as a person would. Warns if it leaves
+                the cursor hidden, the alternate screen, mouse or focus
+                reporting, bracketed paste or line wrapping off, which breaks
+                the shell it returns to.
   control-chars Runs the command under a terminal with {fixture} replaced by a
                 directory of file names holding escape sequences, a carriage
                 return, a newline and more. Fails if an escape sequence reaches

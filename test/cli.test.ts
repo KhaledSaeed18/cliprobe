@@ -18,6 +18,7 @@ describe('cli', () => {
             'pipe-escapes',
             'stdin',
             'ctrl-c',
+            'restore',
             'control-chars',
         ]);
         // Every check that runs the program says it could not; control-chars, with no
@@ -29,6 +30,7 @@ describe('cli', () => {
             'control-chars:skip',
             'ctrl-c:skip',
             'pipe-escapes:error',
+            'restore:error',
             'stdin:error',
         ]);
     });

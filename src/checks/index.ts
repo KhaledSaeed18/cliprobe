@@ -5,6 +5,7 @@ import { colorCheck } from './color.ts';
 import { controlCharsCheck } from './control-chars.ts';
 import { ctrlCCheck } from './ctrl-c.ts';
 import { pipeEscapesCheck } from './pipe-escapes.ts';
+import { restoreCheck } from './restore.ts';
 import { startupCheck } from './startup.ts';
 import { stdinCheckDefinition } from './stdin.ts';
 
@@ -15,6 +16,7 @@ export const CHECKS: readonly Check[] = [
     pipeEscapesCheck,
     stdinCheckDefinition,
     ctrlCCheck,
+    restoreCheck,
     controlCharsCheck,
     startupCheck,
     baselineCheck,
