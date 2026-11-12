@@ -61,5 +61,6 @@ Options:
   -v, --version      Show the version
 
 Exit codes: 0 no failures, 1 a check failed, 2 usage error or could not run.
-Runs the target in the current directory without a shell, with stdin closed,
-a temporary HOME and a minimal environment. Only run programs you trust.`;
+Runs the target in the current directory without a shell, with stdin closed
+(the stdin check uses a pipe it never writes to), a temporary HOME and a
+minimal environment. Only run programs you trust.`;
