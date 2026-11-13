@@ -14,6 +14,41 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Decides whether the test jobs run. A change that only touches docs (Markdown,
+  # LICENSE, .github/assets) can't change a test result, so it skips the test matrix;
+  # quality still runs, since it checks the Markdown's formatting. Anything else,
+  # a manual run, or a diff that can't be worked out runs everything.
+  changes:
+    name: Detect code changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.event.after }}
+        run: |
+          case "$EVENT" in
+            pull_request) range="$PR_BASE...$PR_HEAD" ;;
+            push) range="$PUSH_BEFORE..$PUSH_AFTER" ;;
+            *) range="" ;;
+          esac
+          code=true
+          if [ -n "$range" ] && files=$(git diff --name-only "$range" 2>/dev/null) && [ -n "$files" ]; then
+            if ! printf '%s\n' "$files" | grep -Evq '(^|/)[^/]+\.md$|^LICENSE$|^\.github/assets/'; then
+              code=false
+            fi
+          fi
+          printf '%s\n' "$files"
+          echo "code=$code" | tee -a "$GITHUB_OUTPUT"
+
   quality:
     name: Quality (lint, types, format, package)
     runs-on: ubuntu-latest
@@ -35,6 +70,8 @@ jobs:
 
   test:
     name: Test (${{ matrix.os }}, Node ${{ matrix.node }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -58,6 +95,8 @@ jobs:
 
   alpine:
     name: Test (Alpine, Node 22)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
