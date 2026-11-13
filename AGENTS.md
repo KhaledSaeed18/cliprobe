@@ -60,7 +60,7 @@ Search the repo for the old wording or numbers (`rg "six checks"`) before you pu
 
 ## Workflow and conventions
 
-- **Small conventional commits** (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `ci:`, `build:`, `chore:`), enforced by commitlint. No `Co-Authored-By` or other attribution lines. Don't start a body line with `word:`, because it parses as a git trailer.
+- **Small conventional commits** (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `ci:`, `build:`, `chore:`), enforced by commitlint. npm shows the README from the last published version, so a README change that should reach npm is a `docs(readme):` commit, which releases a patch; other `docs:` commits never release. No `Co-Authored-By` or other attribution lines. Don't start a body line with `word:`, because it parses as a git trailer.
 - **One branch and PR per release.** Pushing a `feat` or `fix` commit to `main` publishes to npm through semantic-release, so features go through a PR, and merging is the release. The maintainer approves each merge.
 - **Merge with "rebase and merge",** never squash, so every `feat` and `fix` lands in the changelog.
 - **Dependabot** opens at most one grouped pull request per group each Monday (npm minor and patch, npm major, GitHub Actions). Its commits are `build(deps-dev)` and `ci(deps)`, so merging one never publishes; ship it with the next `feat` or `fix`. `@types/node` stays on the major of the oldest supported Node.
