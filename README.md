@@ -1,7 +1,7 @@
 <div align="center">
 
 <a href="https://www.npmjs.com/package/cliprobe">
-  <img src=".github/assets/cliprobe-banner.png" alt="cliprobe: black-box tests for the terminal bugs that only show up in a pipe" width="100%" />
+  <img src="https://raw.githubusercontent.com/KhaledSaeed18/cliprobe/main/.github/assets/cliprobe-banner.png" alt="cliprobe: black-box tests for the terminal bugs that only show up in a pipe" width="100%" />
 </a>
 
 <h1>cliprobe</h1>
@@ -13,7 +13,7 @@
   <a href="https://www.npmjs.com/package/cliprobe"><img src="https://shieldcn.dev/npm/dw/cliprobe.svg" alt="npm downloads" /></a>
   <a href="https://github.com/KhaledSaeed18/cliprobe/actions/workflows/ci.yml"><img src="https://shieldcn.dev/github/ci/KhaledSaeed18/cliprobe.svg" alt="CI status" /></a>
   <a href="https://www.npmjs.com/package/cliprobe"><img src="https://shieldcn.dev/npm/node/cliprobe.svg" alt="Node.js version" /></a>
-  <a href="LICENSE"><img src="https://shieldcn.dev/npm/license/cliprobe.svg?variant=secondary" alt="License: MIT" /></a>
+  <a href="https://github.com/KhaledSaeed18/cliprobe/blob/main/LICENSE"><img src="https://shieldcn.dev/npm/license/cliprobe.svg?variant=secondary" alt="License: MIT" /></a>
 </p>
 
 <p>
@@ -331,8 +331,8 @@ pnpm dev --check closed-pipe -- printf hi   # run the CLI from source
 pnpm check                                  # everything CI runs
 ```
 
-[AGENTS.md](AGENTS.md) describes the layout, the product rules and how to add a check. Commits follow [Conventional Commits](https://www.conventionalcommits.org), and every `feat` or `fix` merged to `main` is released to npm.
+[AGENTS.md](https://github.com/KhaledSaeed18/cliprobe/blob/main/AGENTS.md) describes the layout, the product rules and how to add a check. Commits follow [Conventional Commits](https://www.conventionalcommits.org), and every `feat` or `fix` merged to `main` is released to npm.
 
 ## License
 
-[MIT](LICENSE), by [Khaled Saeed](https://github.com/KhaledSaeed18).
+[MIT](https://github.com/KhaledSaeed18/cliprobe/blob/main/LICENSE), by [Khaled Saeed](https://github.com/KhaledSaeed18).
