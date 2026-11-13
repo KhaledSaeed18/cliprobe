@@ -41,6 +41,12 @@ updates:
       # or code could use APIs that Node 22 lacks.
       - dependency-name: '@types/node'
         update-types: [version-update:semver-major]
+      # Preset 10 needs conventional-changelog-writer 9, and the latest
+      # @semantic-release/release-notes-generator (14.1.1) still uses writer 8,
+      # so it would break the release notes. Drop this once a stable generator
+      # supports it; test/release-config.test.ts fails if it is still too early.
+      - dependency-name: conventional-changelog-conventionalcommits
+        versions: ['>=10']
 
   - package-ecosystem: github-actions
     directory: /
