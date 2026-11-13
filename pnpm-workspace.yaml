@@ -1,1 +1,8 @@
 onlyBuiltDependencies: []
+
+# semantic-release loads its changelog preset from its own install first, which
+# finds whatever pnpm hoisted. Keeping the preset out of the hoist makes it load
+# the version pinned in package.json, not the newer one commitlint depends on.
+hoistPattern:
+  - '*'
+  - '!conventional-changelog-conventionalcommits'
