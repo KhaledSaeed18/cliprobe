@@ -76,8 +76,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         node: [22, 24, 26]
+        # macOS runners are scarce and often queue until GitHub cancels the job, so
+        # macOS gets one job on the oldest supported Node. Its own code paths (BSD
+        # script(1), sockets as stdin) don't depend on the Node version.
+        include:
+          - os: macos-latest
+            node: 22
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
