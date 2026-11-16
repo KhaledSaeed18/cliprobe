@@ -139,8 +139,8 @@ export const stdinCheckDefinition: Check = {
     summary: 'waits for stdin when it is an open pipe, as agents and CI runners leave it',
     async run(target, ctx) {
         const results: Result[] = [];
-        for (const args of target.invocations) {
-            results.push(await stdinCheck(target.command, args, !target.explicit, ctx));
+        for (const { args, own } of target.probes) {
+            results.push(await stdinCheck(target.command, args, !own, ctx));
         }
         return results;
     },

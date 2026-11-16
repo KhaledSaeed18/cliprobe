@@ -129,16 +129,19 @@ export interface ProbeOptions {
     /** Only these checks; all of them when left out. */
     checks?: readonly string[];
     timeout?: number;
+    /** Extra probes, each passed as one --probe string. */
+    probes?: readonly string[];
 }
 
 /** Runs cliprobe --json on a command and parses the report. */
 export async function probeJson(
     command: readonly string[],
-    { cwd, checks = [], timeout = 3000 }: ProbeOptions = {}
+    { cwd, checks = [], timeout = 3000, probes = [] }: ProbeOptions = {}
 ): Promise<{ status: number | null; report: Report }> {
     const checkArgs = checks.length ? ['--check', checks.join(',')] : [];
+    const probeArgs = probes.flatMap((p) => ['--probe', p]);
     const r = await cliprobe(
-        ['--json', '--timeout', String(timeout), ...checkArgs, '--', ...command],
+        ['--json', '--timeout', String(timeout), ...checkArgs, ...probeArgs, '--', ...command],
         cwd
     );
     const report = JSON.parse(r.stdout) as Report;
@@ -169,10 +172,12 @@ export async function runCheck(
         return await check.run(
             {
                 command,
-                explicit: args.length > 0,
-                invocations: args.length
-                    ? [f ? expandFixture(args, f.dir) : args]
-                    : [['--version'], ['--help']],
+                probes: args.length
+                    ? [{ args: f ? expandFixture(args, f.dir) : args, own: true }]
+                    : [
+                          { args: ['--version'], own: false },
+                          { args: ['--help'], own: false },
+                      ],
                 ...(f ? { fixtureDir: f.dir } : {}),
             },
             { timeout }

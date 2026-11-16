@@ -1,3 +1,4 @@
+import { shellJoin, shellSplit } from '../core/quote.ts';
 import { type Format, FORMAT_NAMES, isFormat } from '../report/index.ts';
 
 export class UsageError extends Error {}
@@ -20,6 +21,8 @@ export interface Options {
     strict: boolean;
     command: string | undefined;
     args: string[];
+    /** Extra probes from --probe, each split into arguments like a shell command line. */
+    probes: string[][];
 }
 
 export function parseArgs(argv: readonly string[]): Options {
@@ -35,6 +38,7 @@ export function parseArgs(argv: readonly string[]): Options {
         strict: false,
         command: undefined,
         args: [],
+        probes: [],
     };
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i] ?? '';
@@ -67,6 +71,21 @@ export function parseArgs(argv: readonly string[]): Options {
                     `--timeout needs a positive whole number of milliseconds, got "${String(value)}"`
                 );
             }
+        } else if (a === '--probe' || a.startsWith('--probe=')) {
+            const value = a.includes('=') ? a.slice(a.indexOf('=') + 1) : argv[++i];
+            if (value === undefined) throw new UsageError('--probe needs the arguments to probe');
+            let words: string[];
+            try {
+                words = shellSplit(value);
+            } catch (error) {
+                throw new UsageError(
+                    `--probe ${shellJoin([value])} ${error instanceof Error ? error.message : String(error)}`
+                );
+            }
+            if (words.length === 0) {
+                throw new UsageError('--probe needs the arguments to probe; use --bare for none');
+            }
+            opts.probes.push(words);
         } else if (/^--(check|skip)(=|$)/.test(a)) {
             const flag = a.split('=')[0] ?? a;
             const value = a.includes('=') ? a.slice(a.indexOf('=') + 1) : argv[++i];
@@ -86,5 +105,19 @@ export function parseArgs(argv: readonly string[]): Options {
     if (opts.bare && opts.args.length) {
         throw new UsageError('--bare probes the command with no arguments, so give none after it');
     }
+    const seen = new Set(mainProbe(opts).map((args) => JSON.stringify(args)));
+    for (const args of opts.probes) {
+        const key = JSON.stringify(args);
+        if (seen.has(key)) {
+            throw new UsageError(`--probe ${shellJoin(args)} repeats a probe that already runs`);
+        }
+        seen.add(key);
+    }
     return opts;
+}
+
+/** The arguments given after the command, the empty --bare probe, or the default --version and --help. */
+export function mainProbe(opts: Pick<Options, 'bare' | 'args'>): string[][] {
+    if (opts.bare) return [[]];
+    return opts.args.length ? [opts.args] : [['--version'], ['--help']];
 }

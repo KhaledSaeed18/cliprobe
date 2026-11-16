@@ -100,7 +100,7 @@ export const pipeEscapesCheck: Check = {
     summary: 'prints spinners, cursor codes, hyperlinks or titles into a pipe',
     async run(target, ctx) {
         const results: Result[] = [];
-        for (const args of target.invocations) {
+        for (const { args } of target.probes) {
             results.push(
                 await pipeEscapes(target.command, args, ctx, target.fixtureDir !== undefined)
             );

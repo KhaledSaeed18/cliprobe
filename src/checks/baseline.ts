@@ -115,8 +115,10 @@ export const baselineCheck: Check = {
     kind: 'info',
     summary: '--version prints one line, --help goes to stdout, an unknown flag exits non-zero',
     async run(target, ctx) {
-        // With probe args, they are the program: `node ./dist/cli.js` gets the flags appended.
-        const prefix = target.explicit ? (target.invocations[0] ?? []) : [];
+        // With args after the command, they are the program: `node ./dist/cli.js` gets the
+        // flags appended. Extra probes from --probe are subcommands, not a different program.
+        const [first] = target.probes;
+        const prefix = first?.own ? first.args : [];
         return [
             await probe(target.command, [...prefix, '--version'], ctx.timeout, describeVersion),
             await probe(target.command, [...prefix, '--help'], ctx.timeout, describeHelp),

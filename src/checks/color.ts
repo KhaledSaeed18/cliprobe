@@ -150,7 +150,7 @@ export const colorCheck: Check = {
     summary: 'prints color codes into pipes, or ignores NO_COLOR in a terminal',
     async run(target, ctx) {
         const results: Result[] = [];
-        for (const args of target.invocations) {
+        for (const { args } of target.probes) {
             results.push(await color(target.command, args, ctx));
         }
         return results;

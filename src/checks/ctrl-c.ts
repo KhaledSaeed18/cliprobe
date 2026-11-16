@@ -91,13 +91,14 @@ export const ctrlCCheck: Check = {
     kind: 'check',
     summary: 'ignores Ctrl-C, or prints a stack trace when interrupted',
     async run(target) {
-        if (!target.explicit) {
+        const own = target.probes.filter((p) => p.own);
+        if (own.length === 0) {
             // --version and --help finish at once; one line says so instead of two skips.
             const skip: CtrlCResult = {
                 check: 'ctrl-c',
                 invocation: [target.command],
                 verdict: 'skip',
-                reason: 'needs probe args that keep it running, such as a watch or serve command, or --bare',
+                reason: 'needs a probe that keeps running, such as a watch or serve command (--probe), or --bare',
                 sentAfterMs: null,
                 exitedAfterMs: null,
                 exitCode: null,
@@ -107,7 +108,8 @@ export const ctrlCCheck: Check = {
             return [skip];
         }
         const results: Result[] = [];
-        for (const args of target.invocations) results.push(await ctrlC(target.command, args));
+        // The defaults finish at once, so only the probes the user named are worth a signal.
+        for (const { args } of own) results.push(await ctrlC(target.command, args));
         return results;
     },
 };

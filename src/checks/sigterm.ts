@@ -92,13 +92,14 @@ export const sigtermCheck: Check = {
     kind: 'check',
     summary: 'ignores SIGTERM, or exits on it and leaves its child processes running',
     async run(target) {
-        if (!target.explicit) {
+        const own = target.probes.filter((p) => p.own);
+        if (own.length === 0) {
             // --version and --help finish at once; one line says so instead of two skips.
             const skip: SigtermResult = {
                 check: 'sigterm',
                 invocation: [target.command],
                 verdict: 'skip',
-                reason: 'needs probe args that keep it running, such as a watch or serve command, or --bare',
+                reason: 'needs a probe that keeps running, such as a watch or serve command (--probe), or --bare',
                 sentAfterMs: null,
                 exitedAfterMs: null,
                 exitCode: null,
@@ -109,7 +110,8 @@ export const sigtermCheck: Check = {
             return [skip];
         }
         const results: Result[] = [];
-        for (const args of target.invocations) results.push(await sigterm(target.command, args));
+        // The defaults finish at once, so only the probes the user named are worth a signal.
+        for (const { args } of own) results.push(await sigterm(target.command, args));
         return results;
     },
 };

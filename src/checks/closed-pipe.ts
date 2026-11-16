@@ -130,7 +130,7 @@ export const closedPipeCheck: Check = {
     summary: 'crashes or hangs when stdout is closed early (| head, grep -q, an agent)',
     async run(target, ctx) {
         const results: Result[] = [];
-        for (const args of target.invocations) {
+        for (const { args } of target.probes) {
             results.push(await closedPipe(target.command, args, ctx));
         }
         return results;

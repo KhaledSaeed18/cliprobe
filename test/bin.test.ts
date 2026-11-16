@@ -29,6 +29,21 @@ describe('the built cliprobe', () => {
         expect(cliprobeBin(['--bogus']).status).toBe(2);
     });
 
+    it('probes each --probe after the defaults, in one report', () => {
+        const r = cliprobeBin([
+            '--check',
+            'closed-pipe',
+            '--probe',
+            `'${fixture('crash')}'`,
+            '--',
+            node,
+        ]);
+        expect(r.status).toBe(1);
+        expect(r.stdout).toMatch(/PASS +\S+ --version/);
+        expect(r.stdout).toMatch(/PASS +\S+ --help/);
+        expect(r.stdout).toMatch(/FAIL +\S+ \S+crash\.mjs/);
+    });
+
     it('prints no color when stdout is not a terminal', () => {
         const r = cliprobeBin(['--check', 'closed-pipe', '--', node, fixture('crash')]);
         expect(r.stdout).toMatch(/^ {2}FAIL /m);

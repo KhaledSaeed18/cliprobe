@@ -80,7 +80,9 @@ export const startupCheck: Check = {
     kind: 'info',
     summary: 'median wall time of --version, or of the given probe, over 5 runs',
     async run(target, ctx) {
-        const args = target.explicit ? (target.invocations[0] ?? []) : ['--version'];
+        // The probe given after the command (or --bare); --probe adds probes, not a different program.
+        const [first] = target.probes;
+        const args = first?.own ? first.args : ['--version'];
         return [await startup(target.command, args, ctx.timeout)];
     },
 };
