@@ -196,13 +196,14 @@ Many classic tools (git, BSD `ls` and `grep`) color correctly but don't implemen
 
 cliprobe runs the command into a pipe, with the same environment as the color check, and looks at stdout and stderr for terminal control codes that only make sense on a screen: cursor movement, line and screen erases, mode switches such as hiding the cursor, hyperlinks (OSC 8), window titles, and carriage returns that redraw a line. Spinners and progress bars are the usual source. In a pipe they turn logs and agent transcripts into `\r\x1b[2K` noise. Results:
 
-| Verdict | Meaning                                                                    |
-| ------- | -------------------------------------------------------------------------- |
-| `PASS`  | None of those codes reached the pipe (color is the color check's business) |
-| `WARN`  | One or more reached stdout or stderr; the reason lists which kinds         |
-| `SKIP`  | Printed nothing                                                            |
+| Verdict | Meaning                                                                           |
+| ------- | --------------------------------------------------------------------------------- |
+| `PASS`  | None of those codes reached the pipe (color is the color check's business)        |
+| `FAIL`  | An escape sequence reached stdout or stderr; the reason lists which kinds         |
+| `WARN`  | Only carriage returns reached the pipe, redrawing a line as a progress meter does |
+| `SKIP`  | Printed nothing                                                                   |
 
-It only warns for now, never fails. In the census of the top 100 npm CLIs, no `--help` or `--version` printed any of these codes, which says nothing about their spinners: probe a command that does real work, such as an install or a build. With `{fixture}` in the args, the hostile file names themselves are left to the control-chars check: a lister that prints them raw into a pipe, as `ls` does, isn't warned about.
+A carriage-return redraw only warns because some tools draw a progress meter on stderr into a pipe by design: curl does, unless you pass `-s`. Before this check could fail, it ran on 78 commands doing real work (builds, linters, test runners, scaffolders, package managers and system tools) and 38 watch modes and dev servers, offline in a throwaway container. Every escape sequence it found was a real bug, such as a prompt hiding the cursor in a pipe (`changeset init`), `mocha --watch` hiding the cursor and `tsc --watch` clearing the screen; none was a false failure. Probe a command that does real work, such as an install or a build: `--help` and `--version` rarely draw spinners. With `{fixture}` in the args, the hostile file names themselves are left to the control-chars check: a lister that prints them raw into a pipe, as `ls` does, passes. If the codes come from data you passed in (a file you `cat`), they are yours, not the program's.
 
 ### stdin
 
@@ -281,6 +282,18 @@ const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
 ```
 
 `util.styleText` makes that decision for you on Node 22.13 and later (its `validateStream` option, on by default), and most color libraries check `isTTY` already, but some turn color on whenever `TERM` allows it or `CI` is set.
+
+**pipe-escapes:** draw spinners, progress bars and prompts only when the stream is a terminal, and print plain lines otherwise:
+
+```js
+if (process.stderr.isTTY) {
+  startSpinner(); // frames, \r and cursor codes only on a terminal
+} else {
+  console.error('building...'); // one plain line per step in a pipe
+}
+```
+
+Most spinner libraries check `isTTY` already. Prompt libraries may not, so check `process.stdin.isTTY` before asking anything (see stdin below).
 
 **stdin:** look at your arguments before reading stdin, so `--help` and `--version` answer at once, and only prompt when stdin is a terminal:
 
