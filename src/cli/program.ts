@@ -2,11 +2,11 @@ import { CHECKS, selectChecks } from '../checks/index.ts';
 import { collapseResults, createFixture, expandFixture, usesFixture } from '../core/fixture.ts';
 import { safe } from '../core/safe.ts';
 import { findCommand } from '../core/which.ts';
-import type { Result, Target } from '../core/types.ts';
+import type { Probe, Result, Target } from '../core/types.ts';
 import { FORMATS, type Report } from '../report/index.ts';
 import { writeReportFile } from '../report/write.ts';
 import { VERSION } from '../version.ts';
-import { parseArgs, UsageError } from './args.ts';
+import { mainProbe, parseArgs, UsageError } from './args.ts';
 import { HELP } from './help.ts';
 
 /** Everything the CLI takes from the process, so tests can run it in-process. */
@@ -38,7 +38,7 @@ export async function run(argv: readonly string[], io: CliIO): Promise<number> {
         opts = parseArgs(argv);
     } catch (error) {
         if (!(error instanceof UsageError)) throw error;
-        err(`cliprobe: ${error.message}\nRun "cliprobe --help" for usage.\n`);
+        err(`cliprobe: ${safe(error.message)}\nRun "cliprobe --help" for usage.\n`);
         return 2;
     }
     if (opts.help) {
@@ -75,20 +75,19 @@ export async function run(argv: readonly string[], io: CliIO): Promise<number> {
         return 2;
     }
 
-    const invocations = opts.bare
-        ? [[]]
-        : opts.args.length
-          ? [opts.args]
-          : [['--version'], ['--help']];
-    const fixture = usesFixture(opts.args) ? createFixture() : undefined;
+    const own = opts.bare || opts.args.length > 0;
+    const probes: Probe[] = [
+        ...mainProbe(opts).map((args) => ({ args, own })),
+        ...opts.probes.map((args) => ({ args, own: true })),
+    ];
+    const fixture = probes.some((p) => usesFixture(p.args)) ? createFixture() : undefined;
     const results: Result[] = [];
     try {
         const target: Target = {
             command: opts.command,
-            explicit: opts.bare || opts.args.length > 0,
-            invocations: fixture
-                ? invocations.map((a) => expandFixture(a, fixture.dir))
-                : invocations,
+            probes: fixture
+                ? probes.map((p) => ({ ...p, args: expandFixture(p.args, fixture.dir) }))
+                : probes,
             ...(fixture ? { fixtureDir: fixture.dir } : {}),
         };
         const ctx = { timeout: opts.timeout, longRunning: new Set<string>() };

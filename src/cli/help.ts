@@ -7,9 +7,10 @@ Usage:
 
 With no args after <command>, cliprobe probes "<command> --version" and
 "<command> --help". With args, it probes exactly that invocation; with --bare,
-the command alone. An argument containing {fixture} gets the path of a
-temporary directory of file names with control characters in them, for the
-control-chars check.
+the command alone. --probe adds more invocations to the same run, such as a
+watch or serve command for ctrl-c and sigterm. An argument containing
+{fixture} gets the path of a temporary directory of file names with control
+characters in them, for the control-chars check.
 
 Checks:
   closed-pipe   Runs the command with stdout already closed, as when output is
@@ -31,7 +32,7 @@ Checks:
                 terminal. Fails if the command is still running 3 s later or
                 prints a stack trace; warns if it exits 0. Skipped when the
                 command finishes first, so probe a command that keeps running
-                (a watcher, a server, a long task).
+                (a watcher, a server, a long task), e.g. with --probe "serve".
   sigterm       Sends SIGTERM to the command alone after 1 s, as kill, docker
                 stop and process managers do. Warns if it is still running 3 s
                 later, prints a stack trace, or exits and leaves child
@@ -46,11 +47,12 @@ Checks:
                 directory of file names holding escape sequences, a carriage
                 return, a newline and more. Fails if an escape sequence reaches
                 the terminal unescaped; warns for the others. Skipped without
-                {fixture}, e.g. cliprobe -- ls {fixture}
+                {fixture}, e.g. cliprobe --probe "ls {fixture}" -- tool
 
 Info checks (never fail; run only when named with --check):
-  startup       Median wall time over 5 runs of "<command> --version", or of the
-                probe as given, e.g. cliprobe --check startup -- node cli.js -v
+  startup       Median wall time over 5 runs of "<command> --version", or of
+                the args after <command>, e.g.
+                cliprobe --check startup -- node cli.js -v
   baseline      Appends --version, --help and an unknown flag to the probe and
                 reports what scripts rely on: one version line, help on stdout,
                 non-zero exit for a bad flag. A program that ignores unknown
@@ -59,6 +61,9 @@ Info checks (never fail; run only when named with --check):
 Options:
   --bare             Probe the command with no arguments (a REPL, a full-screen
                      program, a server) instead of --version and --help
+  --probe <args>     Also probe "<command> <args>"; repeat it for several. Split
+                     like a shell command line: quotes and backslashes work,
+                     variables and wildcards are not expanded
   --check <name>     Run only this check; repeat it or use commas for several
   --skip <name>      Leave this check out; repeat it or use commas for several
   --strict           Exit 1 on a warning too, not only on a failure

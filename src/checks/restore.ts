@@ -89,7 +89,7 @@ export const restoreCheck: Check = {
                   ? undefined
                   : { verdict: 'skip', reason: `needs a terminal (${support.reason})` };
         const results: Result[] = [];
-        for (const args of target.invocations) {
+        for (const { args, own } of target.probes) {
             if (notRun) {
                 const result: RestoreResult = {
                     check: 'restore',
@@ -106,7 +106,7 @@ export const restoreCheck: Check = {
             results.push(
                 await restore(target.command, args, {
                     timeout: ctx.timeout,
-                    interrupt: target.explicit,
+                    interrupt: own,
                 })
             );
         }

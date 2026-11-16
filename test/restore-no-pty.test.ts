@@ -9,7 +9,13 @@ vi.mock('../src/core/pty.ts', async (original) => ({
 
 describe('restore without a PTY', () => {
     it('skips each invocation and says why', async () => {
-        const target = { command: 'sh', invocations: [['--version'], ['--help']], explicit: false };
+        const target = {
+            command: 'sh',
+            probes: [
+                { args: ['--version'], own: false },
+                { args: ['--help'], own: false },
+            ],
+        };
         const results = await restoreCheck.run(target, { timeout: 1000 });
         expect(results.map((r) => [r.verdict, r.reason])).toEqual([
             ['skip', 'needs a terminal (script(1) not found)'],

@@ -41,7 +41,7 @@ export function judgeControlChars(runs: ControlCharsRuns): Judgement {
     if (!runs.usesFixture) {
         return {
             verdict: 'skip',
-            reason: 'no {fixture} in the arguments; put it where the command takes a path, e.g. ls {fixture}',
+            reason: 'no {fixture} in the arguments; add a probe that takes a path, e.g. --probe "ls {fixture}"',
         };
     }
     const { pipe, tty } = runs;
@@ -146,9 +146,11 @@ export const controlCharsCheck: Check = {
             };
             return [skip];
         }
+        // Only the probes with {fixture} in them list the hostile names.
+        const dir = target.fixtureDir;
         const results: Result[] = [];
-        for (const args of target.invocations) {
-            results.push(await controlChars(target.command, args, target.fixtureDir, ctx));
+        for (const { args } of target.probes.filter((p) => p.args.some((a) => a.includes(dir)))) {
+            results.push(await controlChars(target.command, args, dir, ctx));
         }
         return results;
     },

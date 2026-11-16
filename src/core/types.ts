@@ -17,14 +17,23 @@ export interface Judgement {
     evidence?: string;
 }
 
-/** The program under test and the invocations to probe it with. */
+/** One way to run the program under test. */
+export interface Probe {
+    /** Its arguments, with {fixture} already replaced by the target's `fixtureDir`. */
+    args: string[];
+    /**
+     * The user named it (args after the command, --probe, or --bare); false for the
+     * default --version and --help, which finish at once.
+     */
+    own: boolean;
+}
+
+/** The program under test and the probes to run it with. */
 export interface Target {
     command: string;
-    /** Arguments for each probe, with {fixture} already replaced by `fixtureDir`. */
-    invocations: string[][];
-    /** True when the user gave the probe arguments, or --bare; false for the default --version and --help. */
-    explicit: boolean;
-    /** The directory of hostile file names, when the arguments asked for one. */
+    /** In order: the probe given after the command (or the defaults, or --bare), then each --probe. */
+    probes: Probe[];
+    /** The directory of hostile file names, when an argument asked for one. */
     fixtureDir?: string;
 }
 

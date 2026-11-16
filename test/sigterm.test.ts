@@ -101,7 +101,7 @@ describe('sigterm: fixtures', () => {
         const { report } = await probeJson([node], only);
         expect(report.results).toHaveLength(1);
         expect(first(report)).toMatchObject({ verdict: 'skip', invocation: [node] });
-        expect(first(report).reason).toMatch(/keep it running/);
+        expect(first(report).reason).toMatch(/needs a probe that keeps running.*--probe/);
     });
 
     it('shows the reason in human output', async () => {
