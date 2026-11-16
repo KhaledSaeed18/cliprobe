@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.0](https://github.com/KhaledSaeed18/cliprobe/compare/v1.0.0...v1.1.0) (2026-11-16)
+
+### Features
+
+* **cli:** add --strict to fail on warnings, and --skip to leave checks out ([442e51d](https://github.com/KhaledSaeed18/cliprobe/commit/442e51d127daa262bc462c8a057aee34c7ede7ce))
+
 ## [1.0.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.10.0...v1.0.0) (2026-11-16)
 
 ### ⚠ BREAKING CHANGES
