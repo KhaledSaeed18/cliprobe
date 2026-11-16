@@ -32,6 +32,11 @@ Checks:
                 prints a stack trace; warns if it exits 0. Skipped when the
                 command finishes first, so probe a command that keeps running
                 (a watcher, a server, a long task).
+  sigterm       Sends SIGTERM to the command alone after 1 s, as kill, docker
+                stop and process managers do. Warns if it is still running 3 s
+                later, prints a stack trace, or exits and leaves child
+                processes running (a dev server holding its port). Skipped
+                when the command finishes first, as for ctrl-c.
   restore       Runs the command under a terminal and, for your own probes,
                 types Ctrl-C after 1 s, as a person would. Warns if it leaves
                 the cursor hidden, the alternate screen, mouse or focus
@@ -69,5 +74,5 @@ Options:
 
 Exit codes: 0 no failures, 1 a check failed, 2 usage error or could not run.
 Runs the target in the current directory without a shell, with stdin closed
-(the stdin and ctrl-c checks use a pipe they never write to), a temporary HOME
-and a minimal environment. Only run programs you trust.`;
+(the stdin, ctrl-c and sigterm checks use a pipe they never write to), a
+temporary HOME and a minimal environment. Only run programs you trust.`;

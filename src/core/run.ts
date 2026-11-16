@@ -1,6 +1,7 @@
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
 import { closeSync, constants, openSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { type GroupMember, groupMembers } from './group.ts';
 import { sandbox } from './sandbox.ts';
 
 const STDERR_CAP = 64 * 1024;
@@ -16,10 +17,17 @@ export interface RunOptions {
     /** Called on timeout just before the process group is killed. */
     beforeKill?: () => void;
     /**
-     * Send this signal to the process group after a delay, as a terminal does on
-     * Ctrl-C. Not sent if the program has already exited.
+     * Send this signal after a delay: to the process group, as a terminal does on
+     * Ctrl-C, or with `to: 'process'` to the program alone, as `kill <pid>`,
+     * `docker stop` and process managers do. Not sent if the program has already exited.
      */
-    signal?: { name: NodeJS.Signals; afterMs: number };
+    signal?: { name: NodeJS.Signals; afterMs: number; to?: 'group' | 'process' };
+    /**
+     * Once the program exits (before the timeout), look for processes it left
+     * running in its group for up to this long, record them in `leftRunning`,
+     * then kill them.
+     */
+    leftoversMs?: number;
     /**
      * What stdin is: 'null' (/dev/null, the default), 'open' (a pipe that nobody
      * writes to and that stays open, as agents and CI runners often leave it), or
@@ -38,12 +46,17 @@ export interface RunResult {
     exitCode: number | null;
     signal: NodeJS.Signals | null;
     spawnError?: string;
-    /** Wall time from spawn to exit, in milliseconds. */
+    /**
+     * Wall time from spawn to exit, in milliseconds; with `leftoversMs`, to the
+     * program's own exit, not counting the wait for what it left behind.
+     */
     durationMs: number;
     /** When `options.signal` was sent, in milliseconds after spawn; absent if it was not. */
     signalSentMs?: number;
     /** Length of `stderr` when the signal was sent, to tell output before it from after. */
     stderrAtSignal?: number;
+    /** With `leftoversMs`: processes of its group still running after it exited. */
+    leftRunning?: GroupMember[];
 }
 
 type Outcome = Pick<RunResult, 'exitCode' | 'signal' | 'spawnError'>;
@@ -63,6 +76,7 @@ export function run(
         beforeKill,
         signal,
         stdin = 'null',
+        leftoversMs,
     }: RunOptions
 ): Promise<RunResult> {
     const { dir, env: base } = sandbox();
@@ -89,6 +103,9 @@ export function run(
         let exited = false;
         let signalSentMs: number | undefined;
         let stderrAtSignal: number | undefined;
+        let leftRunning: GroupMember[] | undefined;
+        let afterExit: Promise<void> = Promise.resolve();
+        let exitMs: number | undefined;
         const start = performance.now();
         // A failed spawn emits both "error" and "close"; clean up and resolve once.
         const finish = (outcome: Outcome): void => {
@@ -102,10 +119,11 @@ export function run(
                 stdout,
                 stderr,
                 timedOut,
-                durationMs: Math.round(performance.now() - start),
+                durationMs: exitMs ?? Math.round(performance.now() - start),
                 ...(signalSentMs === undefined
                     ? {}
                     : { signalSentMs, stderrAtSignal: stderrAtSignal ?? 0 }),
+                ...(leftRunning === undefined ? {} : { leftRunning }),
                 ...outcome,
             });
         };
@@ -139,7 +157,7 @@ export function run(
                 signalSentMs = Math.round(performance.now() - start);
                 stderrAtSignal = stderr.length;
                 try {
-                    process.kill(-child.pid, signal.name);
+                    process.kill(signal.to === 'process' ? child.pid : -child.pid, signal.name);
                 } catch {
                     // Exited in the meantime.
                 }
@@ -156,6 +174,16 @@ export function run(
             clearTimeout(closeTimer);
             // An open stdin pipe must not keep cliprobe itself running.
             child.stdin?.destroy();
+            if (leftoversMs !== undefined && !timedOut && child.pid !== undefined) {
+                // The program is gone, so the timeout no longer applies to it; what it left
+                // behind may hold the output pipes open, so it is killed once recorded.
+                clearTimeout(timer);
+                exitMs = Math.round(performance.now() - start);
+                const pgid = child.pid;
+                afterExit = (async () => {
+                    leftRunning = await watchLeftovers(pgid, leftoversMs);
+                })();
+            }
         });
         child.stdout?.on('data', (chunk: Buffer) => {
             if (stdoutBytes < STDOUT_CAP) stdoutChunks.push(chunk);
@@ -172,7 +200,31 @@ export function run(
         child.on('close', (exitCode, exitSignal) => {
             clearTimeout(timer);
             clearTimeout(signalTimer);
-            finish({ exitCode, signal: exitSignal });
+            void afterExit.then(() => finish({ exitCode, signal: exitSignal }));
         });
     });
+}
+
+/** How often to look at the group while waiting for it to empty. */
+const GROUP_POLL_MS = 50;
+
+/**
+ * Waits up to `ms` for group `pgid` to empty, as children stopped by their
+ * parent take a moment to exit, then kills whatever is left and returns it.
+ */
+async function watchLeftovers(pgid: number, ms: number): Promise<GroupMember[]> {
+    const deadline = performance.now() + ms;
+    let members = groupMembers(pgid);
+    while (members.length > 0 && performance.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, GROUP_POLL_MS));
+        members = groupMembers(pgid);
+    }
+    if (members.length > 0) {
+        try {
+            process.kill(-pgid, 'SIGKILL');
+        } catch {
+            // Gone in the meantime.
+        }
+    }
+    return members;
 }
