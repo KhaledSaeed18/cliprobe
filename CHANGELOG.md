@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.10.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.9.0...v0.10.0) (2026-11-16)
+
+### Features
+
+* **sigterm:** warn when a program ignores SIGTERM or leaves children running ([e2c77d8](https://github.com/KhaledSaeed18/cliprobe/commit/e2c77d84b94ab8a45618e9c53f8411a621db93d2))
+
 ## [0.9.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.8.0...v0.9.0) (2026-11-16)
 
 ### Features
