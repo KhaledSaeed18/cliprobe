@@ -27,51 +27,53 @@
 ---
 
 ```sh
-npx cliprobe -- esbuild
+npx cliprobe -- tsx
 ```
 
 ```
-cliprobe 1.0.0: closed-pipe, color, pipe-escapes, stdin, ctrl-c, sigterm, restore, control-chars checks for esbuild
+cliprobe 1.1.0: closed-pipe, color, pipe-escapes, stdin, ctrl-c, sigterm, restore, control-chars checks for tsx
 
 closed-pipe
-  FAIL   esbuild --version  crashed when stdout was closed (exit 0 -> 1)
-                            Error: Command failed: .../esbuild --version (at node_modules/esbuild/bin/esbuild:222:28)
-  FAIL   esbuild --help     crashed when stdout was closed (exit 0 -> 1)
-                            Error: Command failed: .../esbuild --help (at node_modules/esbuild/bin/esbuild:222:28)
+  FAIL   tsx --version  crashed when stdout was closed (exit 0 -> 1)
+                        Error: write EPIPE (at node_modules/tsx/dist/cli.mjs:53:36962)
+  PASS   tsx --help     exited quietly
 
 color
-  PASS   esbuild --version  no color in a pipe or in a terminal
-  PASS   esbuild --help     colors only in a terminal, and NO_COLOR turns it off
+  PASS   tsx --version  no color in a pipe or in a terminal
+  FAIL   tsx --help     printed color codes into a pipe
+                        stdout line 5: \x1b[1mUsage:\x1b[22m
 
 pipe-escapes
-  PASS   esbuild --version  no cursor, erase, hyperlink, title or redraw codes in a pipe
-  PASS   esbuild --help     no cursor, erase, hyperlink, title or redraw codes in a pipe
+  PASS   tsx --version  no cursor, erase, hyperlink, title or redraw codes in a pipe
+  PASS   tsx --help     no cursor, erase, hyperlink, title or redraw codes in a pipe
 
 stdin
-  PASS   esbuild --version  finished without waiting for stdin
-  PASS   esbuild --help     finished without waiting for stdin
+  PASS   tsx --version  finished without waiting for stdin
+  PASS   tsx --help     finished without waiting for stdin
 
 ctrl-c
-  SKIP   esbuild            needs probe args that keep it running, such as a watch or serve command, or --bare
+  SKIP   tsx            needs probe args that keep it running, such as a watch or serve command, or --bare
 
 sigterm
-  SKIP   esbuild            needs probe args that keep it running, such as a watch or serve command, or --bare
+  SKIP   tsx            needs probe args that keep it running, such as a watch or serve command, or --bare
 
 restore
-  PASS   esbuild --version  left no terminal mode switched on when it exited
-  PASS   esbuild --help     left no terminal mode switched on when it exited
+  PASS   tsx --version  left no terminal mode switched on when it exited
+  PASS   tsx --help     left no terminal mode switched on when it exited
 
 control-chars
-  SKIP   esbuild            no {fixture} in the arguments; put it where the command takes a path, e.g. ls {fixture}
+  SKIP   tsx            no {fixture} in the arguments; put it where the command takes a path, e.g. ls {fixture}
 
 2 failed, 0 warned, 8 passed, 3 skipped
 ```
+
+<sub>tsx 4.23.15, run offline in a container in November 2026.</sub>
 
 ## Why cliprobe?
 
 When a program's output goes into a reader that stops early (`| head`, `grep -q`, a closed agent pipe), its next write to stdout fails. A well-behaved program exits quietly. Many Node.js CLIs instead crash with `Error: write EPIPE`, a stack trace, and exit code 1. That breaks scripts running under `set -o pipefail` and confuses agents that read stderr.
 
-In a census of the 100 most-downloaded npm packages that ship a command (119 commands, run offline in a throwaway container), **9 crashed this way every time**: esbuild, browserslist, update-browserslist-db, autoprefixer, husky, tsconfck, ts-jest, rolldown, and tsx on `--version`. The best-known existing CLI auditor rated the first 8 as passing its SIGPIPE check. The same census found two commands that print color codes into a pipe (`giget --help`, `tsx --help`), five whose `--help` or `--version` waits for stdin (he, cssesc, ansi-html, webpack and webpack-dev-server), and no false failures: every `FAIL` reproduced by hand. (A census of `--help` and `--version` can't exercise ctrl-c, sigterm or control-chars, which need a command that keeps running or takes a path; their fixtures and real-tool tests are in `test/`.)
+In a census of the 100 most-downloaded npm packages that ship a command (119 commands, run offline in a throwaway container), **9 crashed this way every time**: esbuild, browserslist, update-browserslist-db, autoprefixer, husky, tsconfck, ts-jest, rolldown, and tsx on `--version`. Since then esbuild and browserslist have fixed it; the other seven still crashed when re-checked at their November 2026 versions. The best-known existing CLI auditor rated the first 8 as passing its SIGPIPE check. The same census found two commands that print color codes into a pipe (`giget --help`, `tsx --help`), five whose `--help` or `--version` waits for stdin (he, cssesc, ansi-html, webpack and webpack-dev-server), and no false failures: every `FAIL` reproduced by hand. (A census of `--help` and `--version` can't exercise ctrl-c, sigterm or control-chars, which need a command that keeps running or takes a path; their fixtures and real-tool tests are in `test/`.)
 
 The other checks cover the rest of what goes wrong between a program and the thing reading it: color codes leaking into logs and agent transcripts, Ctrl-C that is ignored or ends in a stack trace, child processes left running after `kill` or `docker stop`, a terminal left with a hidden cursor or no line wrapping after Ctrl-C, and file names that can send escape sequences to your terminal.
 
