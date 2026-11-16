@@ -16,6 +16,9 @@ jobs:
   ci:
     name: CI
     uses: ./.github/workflows/ci.yml
+    with:
+      # Every change reaches main through a pull request that already passed macOS.
+      skip_macos: true
 
   release:
     name: Publish
