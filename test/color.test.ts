@@ -65,13 +65,17 @@ describe('color: fixtures', () => {
 
     it('records each run in JSON, and leaves out runs it did not need', async () => {
         const pass = (await probeJson([node, colorFixture('tty-aware')], only)).report.results[0];
-        expect(pass).toMatchObject({
+        expect(pass?.details).toMatchObject({
             pipe: { stdoutStyled: false, stderrStyled: false },
             tty: { styled: true, timedOut: false },
             noColor: { styled: false },
         });
         const fail = (await probeJson([node, colorFixture('always')], only)).report.results[0];
-        expect(fail).toMatchObject({ pipe: { stdoutStyled: true }, tty: null, noColor: null });
+        expect(fail?.details).toMatchObject({
+            pipe: { stdoutStyled: true },
+            tty: null,
+            noColor: null,
+        });
     });
 
     it('reports a missing command as could-not-run', async () => {

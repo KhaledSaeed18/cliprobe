@@ -10,8 +10,10 @@ interface PipeEscapesJson {
     verdict: string;
     reason: string;
     evidence?: string;
-    stdoutKinds: string[];
-    stderrKinds: string[];
+    details: {
+        stdoutKinds: string[];
+        stderrKinds: string[];
+    };
 }
 
 const probe = async (
@@ -44,8 +46,8 @@ describe('pipe-escapes: fixtures', () => {
 
     it('checks stderr too, where spinners usually draw, and says which stream', async () => {
         const { result } = await probe(escFixture('spinner'));
-        expect(result.stdoutKinds).toEqual([]);
-        expect(result.stderrKinds).toEqual(['redraw', 'erase']);
+        expect(result.details.stdoutKinds).toEqual([]);
+        expect(result.details.stderrKinds).toEqual(['redraw', 'erase']);
         expect(result.evidence).toMatch(/^stderr line 1: /);
     });
 
@@ -55,7 +57,7 @@ describe('pipe-escapes: fixtures', () => {
 
     it('only warns on a carriage-return progress meter, so the exit code stays 0', async () => {
         const { status, result } = await probe(escFixture('progress-meter'));
-        expect(result.stderrKinds).toEqual(['redraw']);
+        expect(result.details.stderrKinds).toEqual(['redraw']);
         expect(result.evidence).toMatch(/^stderr line 1: /);
         expect(status).toBe(0);
     });

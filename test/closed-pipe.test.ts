@@ -27,7 +27,9 @@ describe('closed-pipe', () => {
         for (let i = 0; i < 10; i++) {
             const { report } = await probeJson(['printf', 'hello\\n'], only);
             expect(first(report).verdict).toBe('pass');
-            expect(first(report).closed.signal).toBe('SIGPIPE');
+            expect((first(report).details['closed'] as { signal: string | null }).signal).toBe(
+                'SIGPIPE'
+            );
         }
     });
 
@@ -41,7 +43,7 @@ describe('closed-pipe', () => {
         const { status, report } = await probeJson([node, fixture('hang')], only);
         expect(status).toBe(1);
         expect(first(report).verdict).toBe('fail');
-        expect(first(report).closed.timedOut).toBe(true);
+        expect((first(report).details['closed'] as { timedOut: boolean }).timedOut).toBe(true);
     });
 
     it('passes cliprobe itself', async () => {

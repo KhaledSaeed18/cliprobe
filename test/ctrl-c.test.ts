@@ -9,10 +9,12 @@ interface CtrlCJson {
     verdict: string;
     reason: string;
     evidence?: string;
-    sentAfterMs: number | null;
-    exitedAfterMs: number | null;
-    exitCode: number | null;
-    signal: string | null;
+    details: {
+        sentAfterMs: number | null;
+        exitedAfterMs: number | null;
+        exitCode: number | null;
+        signal: string | null;
+    };
 }
 
 async function probe(
@@ -55,10 +57,10 @@ describe('ctrl-c: fixtures', () => {
     it('records when Ctrl-C was sent and how long the exit took', async () => {
         const { result } = await probe(ctrlFixture('slow'));
         expect(result.verdict).toBe('pass');
-        expect(result.sentAfterMs).toBeGreaterThanOrEqual(1000);
-        expect(result.exitedAfterMs).toBeGreaterThanOrEqual(1400);
-        expect(result.exitedAfterMs).toBeLessThan(3000);
-        expect(result.exitCode).toBe(130);
+        expect(result.details.sentAfterMs).toBeGreaterThanOrEqual(1000);
+        expect(result.details.exitedAfterMs).toBeGreaterThanOrEqual(1400);
+        expect(result.details.exitedAfterMs).toBeLessThan(3000);
+        expect(result.details.exitCode).toBe(130);
     });
 
     it('leaves no process behind after a program that ignores Ctrl-C', async () => {
