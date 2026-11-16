@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.10.0...v1.0.0) (2026-11-16)
+
+### ⚠ BREAKING CHANGES
+
+* **json:** per-check fields in the JSON report moved from each
+result into result.details, e.g. result.sentAfterMs is now
+result.details.sentAfterMs.
+
+### Features
+
+* **json:** nest each check's fields under details and ship schema.json ([25ccf0a](https://github.com/KhaledSaeed18/cliprobe/commit/25ccf0a0f3b398d13c047582b1a43403eb5802c1))
+
 ## [0.10.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.9.0...v0.10.0) (2026-11-16)
 
 ### Features
