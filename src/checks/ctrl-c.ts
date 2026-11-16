@@ -66,9 +66,12 @@ export function judgeCtrlC(r: RunResult): Judgement {
 export async function ctrlC(command: string, args: readonly string[]): Promise<CtrlCResult> {
     // No PTY: under script(1) the program would get SIGHUP, not SIGINT. A terminal sends
     // Ctrl-C to its foreground process group, and the program leads its own group here.
+    // stdin is a pipe left open and never written, as a terminal leaves it: some servers
+    // (esbuild --serve) stop at the end of stdin, and /dev/null would end them at once.
     const r = await run(command, args, {
         timeout: CTRL_C_DELAY_MS + CTRL_C_GRACE_MS,
         signal: { name: 'SIGINT', afterMs: CTRL_C_DELAY_MS },
+        stdin: 'open',
     });
     const sent = r.signalSentMs;
     return {
