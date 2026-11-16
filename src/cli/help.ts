@@ -19,9 +19,10 @@ Checks:
   color         Runs the command into a pipe, then under a terminal, then under
                 a terminal with NO_COLOR=1. Fails if color codes reach a pipe;
                 warns if color goes to a piped stderr or NO_COLOR is ignored.
-  pipe-escapes  Runs the command into a pipe and warns if cursor movement,
-                erase, hyperlink, window title or carriage-return redraw
-                codes (spinners, progress bars) reach stdout or stderr.
+  pipe-escapes  Runs the command into a pipe. Fails if cursor movement, erase,
+                mode switch, hyperlink or window title codes (spinners,
+                progress bars, prompts) reach stdout or stderr; warns if only
+                carriage returns redraw a line, as a progress meter does.
   stdin         Runs the command with stdin as an open pipe nobody writes to,
                 as agents and CI runners often leave it. Fails if --version or
                 --help waits for input; for your own probes, warns if it
