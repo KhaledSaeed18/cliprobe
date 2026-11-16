@@ -7,8 +7,13 @@
         "cliprobe": "dist/cli.js"
     },
     "files": [
-        "dist"
+        "dist",
+        "schema.json"
     ],
+    "exports": {
+        "./schema.json": "./schema.json",
+        "./package.json": "./package.json"
+    },
     "scripts": {
         "build": "tsdown",
         "dev": "node src/cli/main.ts",
@@ -83,6 +88,7 @@
         "@types/markdown-it": "^14.2.0",
         "@types/node": "^22.20.5",
         "@vitest/coverage-v8": "^5.1.0",
+        "ajv": "^8.20.0",
         "conventional-changelog-conventionalcommits": "^9.3.1",
         "fast-xml-parser": "^5.12.0",
         "husky": "^9.1.7",

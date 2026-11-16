@@ -8,8 +8,10 @@ interface ControlCharsJson {
     verdict: string;
     reason: string;
     evidence?: string;
-    terminalRaw: string[];
-    pipeRaw: string[];
+    details: {
+        terminalRaw: string[];
+        pipeRaw: string[];
+    };
 }
 
 async function probe(
@@ -51,7 +53,7 @@ describe('control-chars: fixtures', () => {
     });
 
     it('lists what reached the terminal and, as data only, what reached a pipe', async () => {
-        expect((await probe(lister('raw'))).result.terminalRaw).toEqual([
+        expect((await probe(lister('raw'))).result.details.terminalRaw).toEqual([
             'osc',
             'csi',
             'c1',
@@ -60,8 +62,8 @@ describe('control-chars: fixtures', () => {
             'bidi',
         ]);
         const ttyOnly = (await probe(lister('tty-only'))).result;
-        expect(ttyOnly.terminalRaw).toEqual([]);
-        expect(ttyOnly.pipeRaw).toEqual(['osc', 'csi', 'c1', 'cr', 'newline', 'bidi']);
+        expect(ttyOnly.details.terminalRaw).toEqual([]);
+        expect(ttyOnly.details.pipeRaw).toEqual(['osc', 'csi', 'c1', 'cr', 'newline', 'bidi']);
     });
 
     it('exits 1 on a fail', async () => {

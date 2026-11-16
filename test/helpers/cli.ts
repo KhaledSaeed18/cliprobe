@@ -1,4 +1,6 @@
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { Ajv2020 } from 'ajv/dist/2020.js';
 import { fileURLToPath } from 'node:url';
 import { CHECKS } from '../../src/checks/index.ts';
 import { run } from '../../src/cli/program.ts';
@@ -59,15 +61,67 @@ export interface JsonResult {
     reason: string;
     evidence?: string;
     invocation: string[];
-    closed: { signal: string | null; timedOut: boolean };
+    /** The check's own fields; tests read them with their own types. */
+    details: Record<string, unknown>;
 }
 
 export interface Report {
     tool: string;
+    schemaVersion: number;
     version: string;
     command: string;
     checks: string[];
+    summary: Record<string, number>;
     results: JsonResult[];
+}
+
+interface SchemaNode {
+    properties?: Record<string, SchemaNode>;
+    items?: SchemaNode;
+    $ref?: string;
+}
+
+export const SCHEMA: Record<string, unknown> & { $defs: Record<string, SchemaNode> } = JSON.parse(
+    readFileSync(new URL('../../schema.json', import.meta.url), 'utf8')
+) as Record<string, unknown> & { $defs: Record<string, SchemaNode> };
+const validate = new Ajv2020({ strict: true, allErrors: true }).compile(SCHEMA);
+
+/**
+ * Fields the schema doesn't declare. The schema allows them, so a 1.x report
+ * still validates against an older schema; the tests make sure none slip in.
+ */
+export function undeclared(value: unknown, node: SchemaNode, path = '$'): string[] {
+    const target = node.$ref ? SCHEMA.$defs[node.$ref.replace('#/$defs/', '')] : node;
+    if (!target || value === null || typeof value !== 'object') return [];
+    if (Array.isArray(value)) {
+        const items = target.items;
+        return items ? value.flatMap((v, i) => undeclared(v, items, `${path}[${i}]`)) : [];
+    }
+    if (!target.properties) return [];
+    return Object.entries(value).flatMap(([key, v]) => {
+        const child = target.properties?.[key];
+        return child ? undeclared(v, child, `${path}.${key}`) : [`${path}.${key}`];
+    });
+}
+
+/** Throws unless the report matches schema.json and declares every field it has. */
+export function assertValidReport(report: unknown): void {
+    if (!validate(report)) {
+        throw new Error(`report does not match schema.json: ${JSON.stringify(validate.errors)}`);
+    }
+    const r = report as Report;
+    const extra = [
+        ...undeclared({ ...r, results: [] }, SCHEMA as SchemaNode),
+        ...r.results.flatMap((res, i) => [
+            ...undeclared({ ...res, details: {} }, SCHEMA.$defs['result'] ?? {}, `$.results[${i}]`),
+            ...undeclared(
+                res.details,
+                SCHEMA.$defs[`details.${res.check}`] ?? {},
+                `$.results[${i}].details`
+            ),
+        ]),
+    ];
+    if (extra.length) throw new Error(`fields missing from schema.json: ${extra.join(', ')}`);
 }
 
 export interface ProbeOptions {
@@ -87,7 +141,9 @@ export async function probeJson(
         ['--json', '--timeout', String(timeout), ...checkArgs, '--', ...command],
         cwd
     );
-    return { status: r.status, report: JSON.parse(r.stdout) as Report };
+    const report = JSON.parse(r.stdout) as Report;
+    assertValidReport(report);
+    return { status: r.status, report };
 }
 
 /** The first result, failing the test loudly if there is none. */

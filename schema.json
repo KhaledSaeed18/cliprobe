@@ -1,0 +1,595 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://unpkg.com/cliprobe@1/schema.json",
+    "title": "cliprobe JSON report",
+    "description": "Output of cliprobe --format json, schemaVersion 1. Within 1.x, fields are only added, never removed, renamed or retyped.",
+    "type": "object",
+    "required": ["tool", "schemaVersion", "version", "command", "checks", "summary", "results"],
+    "properties": {
+        "tool": {
+            "const": "cliprobe"
+        },
+        "schemaVersion": {
+            "const": 1
+        },
+        "version": {
+            "type": "string",
+            "description": "The cliprobe version that wrote the report."
+        },
+        "command": {
+            "type": "string",
+            "description": "The command under test, as given."
+        },
+        "checks": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/checkName"
+            },
+            "description": "The checks that ran, in order."
+        },
+        "summary": {
+            "type": "object",
+            "description": "How many results have each verdict.",
+            "required": ["pass", "fail", "warn", "skip", "error", "info"],
+            "properties": {
+                "pass": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "fail": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "warn": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "skip": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "error": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "info": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
+        "results": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/result"
+            }
+        }
+    },
+    "$defs": {
+        "checkName": {
+            "enum": [
+                "closed-pipe",
+                "color",
+                "pipe-escapes",
+                "stdin",
+                "ctrl-c",
+                "sigterm",
+                "restore",
+                "control-chars",
+                "startup",
+                "baseline"
+            ]
+        },
+        "verdict": {
+            "enum": ["pass", "fail", "warn", "skip", "error", "info"],
+            "description": "fail sets exit code 1; error means the probe could not run; info comes only from info checks."
+        },
+        "controlKind": {
+            "enum": ["cursor", "erase", "mode", "hyperlink", "title", "osc", "redraw"]
+        },
+        "result": {
+            "type": "object",
+            "description": "One check on one invocation.",
+            "required": ["check", "invocation", "verdict", "reason", "details"],
+            "properties": {
+                "check": {
+                    "$ref": "#/$defs/checkName"
+                },
+                "invocation": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The command and arguments that were run."
+                },
+                "verdict": {
+                    "$ref": "#/$defs/verdict"
+                },
+                "reason": {
+                    "type": "string",
+                    "description": "One sentence for a person; its wording may change."
+                },
+                "evidence": {
+                    "type": "string",
+                    "description": "The line that led to the verdict, escaped; absent when there is none."
+                },
+                "details": {
+                    "type": "object",
+                    "description": "The check's own measurements, described by $defs/details.<check>."
+                }
+            },
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {
+                            "check": {
+                                "const": "closed-pipe"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "details": {
+                                "$ref": "#/$defs/details.closed-pipe"
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "check": {
+                                "const": "color"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "details": {
+                                "$ref": "#/$defs/details.color"
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "check": {
+                                "const": "pipe-escapes"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "details": {
+                                "$ref": "#/$defs/details.pipe-escapes"
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "check": {
+                                "const": "stdin"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "details": {
+                                "$ref": "#/$defs/details.stdin"
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "check": {
+                                "const": "ctrl-c"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "details": {
+                                "$ref": "#/$defs/details.ctrl-c"
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "check": {
+                                "const": "sigterm"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "details": {
+                                "$ref": "#/$defs/details.sigterm"
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "check": {
+                                "const": "restore"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "details": {
+                                "$ref": "#/$defs/details.restore"
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "check": {
+                                "const": "control-chars"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "details": {
+                                "$ref": "#/$defs/details.control-chars"
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "check": {
+                                "const": "startup"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "details": {
+                                "$ref": "#/$defs/details.startup"
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "check": {
+                                "const": "baseline"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "details": {
+                                "$ref": "#/$defs/details.baseline"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "details.closed-pipe": {
+            "type": "object",
+            "description": "A normal run into a pipe, then a run with stdout already closed.",
+            "required": ["baseline", "closed"],
+            "properties": {
+                "baseline": {
+                    "type": "object",
+                    "description": "The normal run.",
+                    "required": ["exitCode", "signal", "stdoutBytes"],
+                    "properties": {
+                        "exitCode": {
+                            "type": ["integer", "null"],
+                            "description": "Exit code; null if it was killed by a signal or never ran."
+                        },
+                        "signal": {
+                            "type": ["string", "null"],
+                            "description": "Signal that ended it, such as \"SIGPIPE\"; null if it exited."
+                        },
+                        "stdoutBytes": {
+                            "type": "integer",
+                            "minimum": 0
+                        }
+                    }
+                },
+                "closed": {
+                    "type": "object",
+                    "description": "The run with stdout closed.",
+                    "required": ["exitCode", "signal", "timedOut", "stderr"],
+                    "properties": {
+                        "exitCode": {
+                            "type": ["integer", "null"],
+                            "description": "Exit code; null if it was killed by a signal or never ran."
+                        },
+                        "signal": {
+                            "type": ["string", "null"],
+                            "description": "Signal that ended it, such as \"SIGPIPE\"; null if it exited."
+                        },
+                        "timedOut": {
+                            "type": "boolean"
+                        },
+                        "stderr": {
+                            "type": "string",
+                            "description": "What it printed to stderr, up to 64 KiB."
+                        }
+                    }
+                }
+            }
+        },
+        "details.color": {
+            "type": "object",
+            "description": "Runs into a pipe, under a terminal and under a terminal with NO_COLOR=1; null for a run that was not needed.",
+            "required": ["pipe", "tty", "noColor"],
+            "properties": {
+                "pipe": {
+                    "type": "object",
+                    "description": "The run into a pipe.",
+                    "required": ["exitCode", "stdoutStyled", "stderrStyled"],
+                    "properties": {
+                        "exitCode": {
+                            "type": ["integer", "null"],
+                            "description": "Exit code; null if it was killed by a signal or never ran."
+                        },
+                        "stdoutStyled": {
+                            "type": "boolean"
+                        },
+                        "stderrStyled": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "tty": {
+                    "type": ["object", "null"],
+                    "description": "The run under a terminal.",
+                    "required": ["exitCode", "timedOut", "styled"],
+                    "properties": {
+                        "exitCode": {
+                            "type": ["integer", "null"],
+                            "description": "Exit code; null if it was killed by a signal or never ran."
+                        },
+                        "timedOut": {
+                            "type": "boolean"
+                        },
+                        "styled": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "noColor": {
+                    "type": ["object", "null"],
+                    "description": "The run under a terminal with NO_COLOR=1.",
+                    "required": ["exitCode", "timedOut", "styled"],
+                    "properties": {
+                        "exitCode": {
+                            "type": ["integer", "null"],
+                            "description": "Exit code; null if it was killed by a signal or never ran."
+                        },
+                        "timedOut": {
+                            "type": "boolean"
+                        },
+                        "styled": {
+                            "type": "boolean"
+                        }
+                    }
+                }
+            }
+        },
+        "details.pipe-escapes": {
+            "type": "object",
+            "description": "Kinds of control code found on each stream, without repeats.",
+            "required": ["stdoutKinds", "stderrKinds"],
+            "properties": {
+                "stdoutKinds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/controlKind"
+                    }
+                },
+                "stderrKinds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/controlKind"
+                    }
+                }
+            }
+        },
+        "details.stdin": {
+            "type": "object",
+            "description": "The run with stdin as an open pipe that is closed after a while.",
+            "required": ["closedMs", "waitedForStdin", "finishedAfterCloseMs"],
+            "properties": {
+                "closedMs": {
+                    "type": ["integer", "null"],
+                    "minimum": 0,
+                    "description": "When stdin was closed, in ms after start; null if it finished first."
+                },
+                "waitedForStdin": {
+                    "type": "boolean"
+                },
+                "finishedAfterCloseMs": {
+                    "type": ["integer", "null"],
+                    "minimum": 0,
+                    "description": "From closing stdin to the program finishing; null if not measured."
+                }
+            }
+        },
+        "details.ctrl-c": {
+            "type": "object",
+            "description": "SIGINT to the process group after 1 s.",
+            "required": ["sentAfterMs", "exitedAfterMs", "exitCode", "signal", "stderrAfter"],
+            "properties": {
+                "sentAfterMs": {
+                    "type": ["integer", "null"],
+                    "minimum": 0,
+                    "description": "When SIGINT was sent, in ms after start; null if the program had already exited."
+                },
+                "exitedAfterMs": {
+                    "type": ["integer", "null"],
+                    "minimum": 0,
+                    "description": "From SIGINT to exit; null if it was not sent or the program ignored it."
+                },
+                "exitCode": {
+                    "type": ["integer", "null"],
+                    "description": "Exit code; null if it was killed by a signal or never ran."
+                },
+                "signal": {
+                    "type": ["string", "null"],
+                    "description": "Signal that ended it, such as \"SIGPIPE\"; null if it exited."
+                },
+                "stderrAfter": {
+                    "type": "string",
+                    "description": "The last 2000 characters it printed to stderr after SIGINT."
+                }
+            }
+        },
+        "details.sigterm": {
+            "type": "object",
+            "description": "SIGTERM to the program alone after 1 s.",
+            "required": [
+                "sentAfterMs",
+                "exitedAfterMs",
+                "exitCode",
+                "signal",
+                "leftRunning",
+                "stderrAfter"
+            ],
+            "properties": {
+                "sentAfterMs": {
+                    "type": ["integer", "null"],
+                    "minimum": 0,
+                    "description": "When SIGTERM was sent, in ms after start; null if the program had already exited."
+                },
+                "exitedAfterMs": {
+                    "type": ["integer", "null"],
+                    "minimum": 0,
+                    "description": "From SIGTERM to exit; null if it was not sent or the program ignored it."
+                },
+                "exitCode": {
+                    "type": ["integer", "null"],
+                    "description": "Exit code; null if it was killed by a signal or never ran."
+                },
+                "signal": {
+                    "type": ["string", "null"],
+                    "description": "Signal that ended it, such as \"SIGPIPE\"; null if it exited."
+                },
+                "leftRunning": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Command lines of the processes still running in its group after it exited."
+                },
+                "stderrAfter": {
+                    "type": "string",
+                    "description": "The last 2000 characters it printed to stderr after SIGTERM."
+                }
+            }
+        },
+        "details.restore": {
+            "type": "object",
+            "description": "The run under a terminal.",
+            "required": ["interrupted", "openModes"],
+            "properties": {
+                "interrupted": {
+                    "type": "boolean",
+                    "description": "Whether Ctrl-C was typed; false when the program exited first."
+                },
+                "openModes": {
+                    "type": "array",
+                    "description": "The terminal modes it left switched on.",
+                    "items": {
+                        "type": "object",
+                        "description": "One mode left on.",
+                        "required": ["label", "sequence", "line"],
+                        "properties": {
+                            "label": {
+                                "type": "string"
+                            },
+                            "sequence": {
+                                "type": "string",
+                                "description": "The sequence that switched it on, escaped."
+                            },
+                            "line": {
+                                "type": "integer",
+                                "minimum": 1
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "details.control-chars": {
+            "type": "object",
+            "description": "Kinds of hostile file name that reached the output unescaped.",
+            "required": ["terminalRaw", "pipeRaw"],
+            "properties": {
+                "terminalRaw": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "In the terminal run; these decide the verdict."
+                },
+                "pipeRaw": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "In the pipe run; normal for ls and find, so not judged."
+                }
+            }
+        },
+        "details.startup": {
+            "type": "object",
+            "description": "Timed runs.",
+            "required": ["runsMs", "medianMs"],
+            "properties": {
+                "runsMs": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "description": "Wall time of each timed run."
+                },
+                "medianMs": {
+                    "type": ["integer", "null"],
+                    "minimum": 0
+                }
+            }
+        },
+        "details.baseline": {
+            "type": "object",
+            "description": "One run with the extra flag.",
+            "required": ["exitCode", "stdoutLines", "stderrLines"],
+            "properties": {
+                "exitCode": {
+                    "type": ["integer", "null"],
+                    "description": "Exit code; null if it was killed by a signal or never ran."
+                },
+                "stdoutLines": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "stderrLines": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        }
+    }
+}

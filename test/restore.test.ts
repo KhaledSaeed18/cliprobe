@@ -10,8 +10,10 @@ interface RestoreJson {
     verdict: string;
     reason: string;
     evidence?: string;
-    interrupted: boolean;
-    openModes: { label: string; sequence: string; line: number }[];
+    details: {
+        interrupted: boolean;
+        openModes: { label: string; sequence: string; line: number }[];
+    };
 }
 
 async function probe(command: readonly string[]): Promise<RestoreJson[]> {
@@ -48,8 +50,8 @@ describe('restore: fixtures', () => {
         expect(result?.evidence).toBe(
             'ESC[?1049h on line 1, never undone; ESC[?1000;1006h on line 1, never undone'
         );
-        expect(result?.interrupted).toBe(true);
-        expect(result?.openModes.map((m) => m.label)).toEqual([
+        expect(result?.details.interrupted).toBe(true);
+        expect(result?.details.openModes.map((m) => m.label)).toEqual([
             'alternate screen',
             'mouse reporting',
         ]);
@@ -57,14 +59,14 @@ describe('restore: fixtures', () => {
 
     it('says when a program exited before Ctrl-C', async () => {
         const [result] = await probe(restoreFixture('exits-hidden'));
-        expect(result?.interrupted).toBe(false);
+        expect(result?.details.interrupted).toBe(false);
     });
 });
 
 describe('restore: real tools', () => {
     it('passes --version and --help of node without Ctrl-C', async () => {
         const results = await probe([node]);
-        expect(results.map((r) => [r.verdict, r.interrupted])).toEqual([
+        expect(results.map((r) => [r.verdict, r.details.interrupted])).toEqual([
             ['pass', false],
             ['pass', false],
         ]);
@@ -73,7 +75,7 @@ describe('restore: real tools', () => {
     it('passes sleep, stopped by Ctrl-C', async () => {
         const [result] = await probe(['sleep', '10']);
         expect(result?.verdict).toBe('pass');
-        expect(result?.interrupted).toBe(true);
+        expect(result?.details.interrupted).toBe(true);
     });
 
     it('reports a missing command as an error, not a pass', async () => {

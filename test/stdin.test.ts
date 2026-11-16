@@ -9,8 +9,10 @@ interface StdinJson {
     reason: string;
     evidence?: string;
     invocation: string[];
-    waitedForStdin: boolean;
-    finishedAfterCloseMs: number | null;
+    details: {
+        waitedForStdin: boolean;
+        finishedAfterCloseMs: number | null;
+    };
 }
 
 async function results(
@@ -33,8 +35,8 @@ describe("stdin: cliprobe's own --version and --help probes", () => {
             expect(r.evidence).toMatch(
                 /with stdin closed; still running after 3 s with stdin open; finished \d+ ms after stdin closed/
             );
-            expect(r.waitedForStdin).toBe(true);
-            expect(r.finishedAfterCloseMs).toBeLessThan(1500);
+            expect(r.details.waitedForStdin).toBe(true);
+            expect(r.details.finishedAfterCloseMs).toBeLessThan(1500);
         }
     });
 

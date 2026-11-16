@@ -9,8 +9,10 @@ interface StartupJson {
     verdict: string;
     reason: string;
     invocation: string[];
-    runsMs: number[];
-    medianMs: number | null;
+    details: {
+        runsMs: number[];
+        medianMs: number | null;
+    };
 }
 
 const probe = async (command: readonly string[]): Promise<StartupJson> =>
@@ -30,9 +32,9 @@ describe('startup', () => {
         const r = await probe(slow);
         expect(r.verdict).toBe('info');
         expect(r.invocation).toEqual(slow);
-        expect(r.runsMs).toHaveLength(5);
-        expect(r.medianMs).toBeGreaterThanOrEqual(150);
-        expect(r.medianMs).toBeLessThan(2000);
+        expect(r.details.runsMs).toHaveLength(5);
+        expect(r.details.medianMs).toBeGreaterThanOrEqual(150);
+        expect(r.details.medianMs).toBeLessThan(2000);
         expect(r.reason).toMatch(/^median \d+ ms over 5 runs \(min \d+, max \d+\)$/);
     });
 

@@ -21,11 +21,13 @@ interface SigtermJson {
     verdict: string;
     reason: string;
     evidence?: string;
-    sentAfterMs: number | null;
-    exitedAfterMs: number | null;
-    exitCode: number | null;
-    signal: string | null;
-    leftRunning: string[];
+    details: {
+        sentAfterMs: number | null;
+        exitedAfterMs: number | null;
+        exitCode: number | null;
+        signal: string | null;
+        leftRunning: string[];
+    };
 }
 
 async function probe(
@@ -55,9 +57,9 @@ describe('sigterm: fixtures', () => {
 
     it('names what it left running', async () => {
         const { result } = await probe(termFixture('orphans-quiet'));
-        expect(result.leftRunning).toHaveLength(2);
+        expect(result.details.leftRunning).toHaveLength(2);
         // Time to its own exit, without the wait for its children.
-        expect(result.exitedAfterMs).toBeLessThan(500);
+        expect(result.details.exitedAfterMs).toBeLessThan(500);
         expect(result.evidence).toMatch(/^still running: .*sigterm-orphan \(and 1 more\)$/);
     });
 
@@ -80,10 +82,10 @@ describe('sigterm: fixtures', () => {
 
     it('records when SIGTERM was sent and how long the exit took', async () => {
         const { result } = await probe(termFixture('graceful'));
-        expect(result.sentAfterMs).toBeGreaterThanOrEqual(1000);
-        expect(result.exitedAfterMs).toBeGreaterThanOrEqual(150);
-        expect(result.exitedAfterMs).toBeLessThan(3000);
-        expect(result.exitCode).toBe(0);
+        expect(result.details.sentAfterMs).toBeGreaterThanOrEqual(1000);
+        expect(result.details.exitedAfterMs).toBeGreaterThanOrEqual(150);
+        expect(result.details.exitedAfterMs).toBeLessThan(3000);
+        expect(result.details.exitCode).toBe(0);
     });
 
     it('only warns, so the exit code stays 0', async () => {
