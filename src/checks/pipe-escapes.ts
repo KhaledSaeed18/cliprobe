@@ -24,19 +24,27 @@ function listLabels(kinds: readonly ControlKind[]): string {
         : `${labels.slice(0, -1).join(', ')} and ${labels.at(-1) ?? ''}`;
 }
 
+/**
+ * Escape sequences (cursor, erase, mode, hyperlink, title, other OSC) in a pipe fail: no
+ * real tool in the censuses printed one there except by mistake. A carriage-return redraw
+ * alone only warns, because some tools draw a progress meter on stderr by design (curl).
+ */
 export function judgePipeEscapes(r: RunResult): Judgement {
     if (r.spawnError) return { verdict: 'error', reason: `could not start: ${r.spawnError}` };
     const stdout = r.stdout.toString('utf8');
-    const outHits = findControls(stdout);
-    const errHits = findControls(r.stderr);
-    const first = outHits[0]
-        ? { stream: 'stdout', hit: outHits[0] }
-        : errHits[0] && { stream: 'stderr', hit: errHits[0] };
+    const hits = [
+        ...findControls(stdout).map((hit) => ({ stream: 'stdout', hit })),
+        ...findControls(r.stderr).map((hit) => ({ stream: 'stderr', hit })),
+    ];
+    const escape = hits.find((h) => h.hit.kind !== 'redraw');
+    const first = escape ?? hits[0];
     if (first) {
-        const kinds = [...new Set([...kindsOf(outHits), ...kindsOf(errHits)])];
+        const kinds = [...new Set(hits.map((h) => h.hit.kind))];
         return {
-            verdict: 'warn',
-            reason: `printed terminal control codes into a pipe: ${listLabels(kinds)}`,
+            verdict: escape ? 'fail' : 'warn',
+            reason: escape
+                ? `printed terminal control codes into a pipe: ${listLabels(kinds)}`
+                : 'redrew lines with carriage returns in a pipe, as a progress meter does',
             evidence: `${first.stream} line ${first.hit.line}: ${first.hit.text}`,
         };
     }
