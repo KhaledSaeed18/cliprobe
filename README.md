@@ -220,7 +220,7 @@ In the census of the top 100 npm CLIs, 9 of 238 `--help` and `--version` runs fa
 
 ### ctrl-c
 
-cliprobe lets the command run for 1 second, then sends SIGINT to its process group, which is what a terminal does when you press Ctrl-C, and gives it 3 seconds to exit. Results:
+cliprobe lets the command run for 1 second, then sends SIGINT to its process group, which is what a terminal does when you press Ctrl-C, and gives it 3 seconds to exit. stdin is left open, as a terminal leaves it, so a server that stops at the end of stdin (`esbuild --serve`) keeps running until the Ctrl-C. Results:
 
 | Verdict | Meaning                                                                                        |
 | ------- | ---------------------------------------------------------------------------------------------- |
@@ -229,7 +229,7 @@ cliprobe lets the command run for 1 second, then sends SIGINT to its process gro
 | `WARN`  | Exited 0, so a script or an agent can't tell the work was interrupted                          |
 | `SKIP`  | Finished before the Ctrl-C, as `--version` and `--help` do: probe a command that keeps running |
 
-A stack trace printed before the Ctrl-C doesn't count. Python's default `KeyboardInterrupt` traceback is the classic failure here, so `python3 -c 'import time; time.sleep(30)'` fails.
+A stack trace printed before the Ctrl-C doesn't count. Python's default `KeyboardInterrupt` traceback is the classic failure here, so `python3 -c 'import time; time.sleep(30)'` fails. Across 42 watch modes, dev servers and long tasks run offline (vite, webpack, tsc, jest, Next.js, Nuxt, Astro, wrangler, nodemon and more), every one stopped within 60 ms of the Ctrl-C, whether it came after 1, 3 or 6 seconds, so the timing rarely matters. 13 of them exit 0 on purpose, among them `tsc --watch`, webpack, `next dev` and `nuxt dev`: that is a warn, not a fail.
 
 ### restore
 
@@ -302,14 +302,16 @@ if (process.stdin.isTTY) askTheQuestion();
 else useTheDefault(); // or fail with a message saying which flag to pass
 ```
 
-**ctrl-c:** Node's default already does the right thing, dying by SIGINT. If you add a handler to clean up, finish by exiting 130 rather than 0, and don't throw from it:
+**ctrl-c:** Node's default already does the right thing, dying by SIGINT. If you add a handler to clean up, finish by dying the same way, and don't throw from it:
 
 ```js
 process.once('SIGINT', async () => {
   await cleanUp();
-  process.exit(130);
+  process.kill(process.pid, 'SIGINT'); // the handler is gone, so this ends the process
 });
 ```
+
+That matters to the shell that started you: bash stops a script on Ctrl-C only when the program died by the signal. After an exit with 130 or 0, the script carries on to its next command; 130 at least stops `&&` chains and `set -e`, which 0 doesn't.
 
 **restore:** switch every mode back off on the way out, including after Ctrl-C. Node runs `exit` handlers on `process.exit()` but not when a signal kills it, so turn SIGINT into an exit, and in raw mode, where Ctrl-C arrives as the key `\x03`, exit on that key too:
 
@@ -332,7 +334,7 @@ Also escape U+2028, U+2029 and the bidi controls (U+202A to U+202E, U+2066 to U+
 
 ## Safety
 
-cliprobe runs the target in your current directory without a shell, with stdin closed (`/dev/null`; the stdin check also uses a pipe that it never writes to), a temporary `HOME`, and a minimal environment (no tokens from your shell). It still executes the program, so only probe programs you trust. By default cliprobe passes only the arguments you give, or `--version` and `--help`, or none with `--bare`; only the baseline check, when you name it, adds an unknown flag. The only input it ever sends is Ctrl-C, from the ctrl-c and restore checks, to probes you write. It kills each run's whole process group on timeout, including under a pseudo-terminal. It runs on macOS and Linux, including Alpine; the terminal checks need the `script` command, which Alpine ships in `util-linux-misc`. Windows isn't supported yet.
+cliprobe runs the target in your current directory without a shell, with stdin closed (`/dev/null`; the stdin and ctrl-c checks use a pipe that they never write to), a temporary `HOME`, and a minimal environment (no tokens from your shell). It still executes the program, so only probe programs you trust. By default cliprobe passes only the arguments you give, or `--version` and `--help`, or none with `--bare`; only the baseline check, when you name it, adds an unknown flag. The only input it ever sends is Ctrl-C, from the ctrl-c and restore checks, to probes you write. It kills each run's whole process group on timeout, including under a pseudo-terminal. It runs on macOS and Linux, including Alpine; the terminal checks need the `script` command, which Alpine ships in `util-linux-misc`. Windows isn't supported yet.
 
 ## Contributing
 
