@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.9.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.8.0...v0.9.0) (2026-11-16)
+
+### Features
+
+* **ctrl-c:** leave stdin open, as a terminal does ([750f876](https://github.com/KhaledSaeed18/cliprobe/commit/750f87601c83f4e734417594d3ff3e021dc56cf3))
+
 ## [0.8.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.7.1...v0.8.0) (2026-11-16)
 
 ### Features
