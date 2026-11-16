@@ -31,7 +31,7 @@ npx cliprobe -- esbuild
 ```
 
 ```
-cliprobe 0.6.0: closed-pipe, color, pipe-escapes, stdin, ctrl-c, restore, control-chars checks for esbuild
+cliprobe 0.10.0: closed-pipe, color, pipe-escapes, stdin, ctrl-c, sigterm, restore, control-chars checks for esbuild
 
 closed-pipe
   FAIL   esbuild --version  crashed when stdout was closed (exit 0 -> 1)
@@ -54,6 +54,9 @@ stdin
 ctrl-c
   SKIP   esbuild            needs probe args that keep it running, such as a watch or serve command, or --bare
 
+sigterm
+  SKIP   esbuild            needs probe args that keep it running, such as a watch or serve command, or --bare
+
 restore
   PASS   esbuild --version  left no terminal mode switched on when it exited
   PASS   esbuild --help     left no terminal mode switched on when it exited
@@ -61,16 +64,16 @@ restore
 control-chars
   SKIP   esbuild            no {fixture} in the arguments; put it where the command takes a path, e.g. ls {fixture}
 
-2 failed, 0 warned, 8 passed, 2 skipped
+2 failed, 0 warned, 8 passed, 3 skipped
 ```
 
 ## Why cliprobe?
 
 When a program's output goes into a reader that stops early (`| head`, `grep -q`, a closed agent pipe), its next write to stdout fails. A well-behaved program exits quietly. Many Node.js CLIs instead crash with `Error: write EPIPE`, a stack trace, and exit code 1. That breaks scripts running under `set -o pipefail` and confuses agents that read stderr.
 
-In a census of the 100 most-downloaded npm packages that ship a command (119 commands, run offline in a throwaway container), **9 crashed this way every time**: esbuild, browserslist, update-browserslist-db, autoprefixer, husky, tsconfck, ts-jest, rolldown, and tsx on `--version`. The best-known existing CLI auditor rated the first 8 as passing its SIGPIPE check. The same census found two commands that print color codes into a pipe (`giget --help`, `tsx --help`), five whose `--help` or `--version` waits for stdin (he, cssesc, ansi-html, webpack and webpack-dev-server), and no false failures: every `FAIL` reproduced by hand. (A census of `--help` and `--version` can't exercise ctrl-c or control-chars, which need a command that keeps running or takes a path; their fixtures and real-tool tests are in `test/`.)
+In a census of the 100 most-downloaded npm packages that ship a command (119 commands, run offline in a throwaway container), **9 crashed this way every time**: esbuild, browserslist, update-browserslist-db, autoprefixer, husky, tsconfck, ts-jest, rolldown, and tsx on `--version`. The best-known existing CLI auditor rated the first 8 as passing its SIGPIPE check. The same census found two commands that print color codes into a pipe (`giget --help`, `tsx --help`), five whose `--help` or `--version` waits for stdin (he, cssesc, ansi-html, webpack and webpack-dev-server), and no false failures: every `FAIL` reproduced by hand. (A census of `--help` and `--version` can't exercise ctrl-c, sigterm or control-chars, which need a command that keeps running or takes a path; their fixtures and real-tool tests are in `test/`.)
 
-The other checks cover the rest of what goes wrong between a program and the thing reading it: color codes leaking into logs and agent transcripts, Ctrl-C that is ignored or ends in a stack trace, a terminal left with a hidden cursor or no line wrapping after Ctrl-C, and file names that can send escape sequences to your terminal.
+The other checks cover the rest of what goes wrong between a program and the thing reading it: color codes leaking into logs and agent transcripts, Ctrl-C that is ignored or ends in a stack trace, child processes left running after `kill` or `docker stop`, a terminal left with a hidden cursor or no line wrapping after Ctrl-C, and file names that can send escape sequences to your terminal.
 
 - **Evidence, never a score.** Every result is a verdict with the error line, the first stack frame in the target's own code, or the escape sequence that leaked.
 - **No false fails.** A new check starts as warn-only and is calibrated against real tools before it may fail.
@@ -84,7 +87,7 @@ The other checks cover the rest of what goes wrong between a program and the thi
 - [Usage](#usage)
 - [Exit codes](#exit-codes)
 - [In CI](#in-ci)
-- [Checks](#checks): [closed-pipe](#closed-pipe), [color](#color), [pipe-escapes](#pipe-escapes), [stdin](#stdin), [ctrl-c](#ctrl-c), [restore](#restore), [control-chars](#control-chars), [info checks](#info-checks)
+- [Checks](#checks): [closed-pipe](#closed-pipe), [color](#color), [pipe-escapes](#pipe-escapes), [stdin](#stdin), [ctrl-c](#ctrl-c), [sigterm](#sigterm), [restore](#restore), [control-chars](#control-chars), [info checks](#info-checks)
 - [Fixing a failure in a Node.js CLI](#fixing-a-failure-in-a-nodejs-cli)
 - [Safety](#safety)
 - [Contributing](#contributing)
@@ -162,9 +165,9 @@ In JUnit, each check is a test suite and each probe a test case: `FAIL` is a fai
 
 ## Checks
 
-A default run does the seven checks below: closed-pipe, color, pipe-escapes, stdin, ctrl-c, restore and control-chars. Each one reports evidence, never a score. Two info checks, startup and baseline, run only when you name them with `--check`.
+A default run does the eight checks below: closed-pipe, color, pipe-escapes, stdin, ctrl-c, sigterm, restore and control-chars. Each one reports evidence, never a score. Two info checks, startup and baseline, run only when you name them with `--check`.
 
-A command that keeps running, such as a server, a watcher or a full-screen program, is what ctrl-c and restore need. The other checks judge it on what it did before the timeout (`--timeout`, 15 seconds by default): a crash once stdout is closed still fails, color or a spinner in a pipe still counts, and stdin is skipped. The timeout is paid once: after the first check sees the command still running, the others watch it for 3 seconds.
+A command that keeps running, such as a server, a watcher or a full-screen program, is what ctrl-c, sigterm and restore need. The other checks judge it on what it did before the timeout (`--timeout`, 15 seconds by default): a crash once stdout is closed still fails, color or a spinner in a pipe still counts, and stdin is skipped. The timeout is paid once: after the first check sees the command still running, the others watch it for 3 seconds.
 
 ### closed-pipe
 
@@ -230,6 +233,18 @@ cliprobe lets the command run for 1 second, then sends SIGINT to its process gro
 | `SKIP`  | Finished before the Ctrl-C, as `--version` and `--help` do: probe a command that keeps running |
 
 A stack trace printed before the Ctrl-C doesn't count. Python's default `KeyboardInterrupt` traceback is the classic failure here, so `python3 -c 'import time; time.sleep(30)'` fails. Across 42 watch modes, dev servers and long tasks run offline (vite, webpack, tsc, jest, Next.js, Nuxt, Astro, wrangler, nodemon and more), every one stopped within 60 ms of the Ctrl-C, whether it came after 1, 3 or 6 seconds, so the timing rarely matters. 13 of them exit 0 on purpose, among them `tsc --watch`, webpack, `next dev` and `nuxt dev`: that is a warn, not a fail.
+
+### sigterm
+
+`kill <pid>`, `docker stop`, systemd, pm2 and CI runners that cancel a job send SIGTERM to the program alone, not to its process group as a terminal sends Ctrl-C. So a program that started children (a dev server, a worker pool, a shell running a command) has to stop them itself. If it exits without doing so, they keep running with nobody to stop them, holding their ports and files. cliprobe lets the command run for 1 second, sends SIGTERM to it alone, and gives it 3 seconds to exit and 1 more second for its children to follow, then lists what is still running in its process group and kills it. stdin is left open, as for ctrl-c. Results:
+
+| Verdict | Meaning                                                                                                                                     |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PASS`  | Exited, by the signal or with any exit code, and left nothing running in its process group                                                  |
+| `WARN`  | Exited but left processes running (the evidence names the first), still running 3 seconds later, or printed a stack trace after the SIGTERM |
+| `SKIP`  | Finished before the SIGTERM, as `--version` and `--help` do: probe a command that keeps running                                             |
+
+It only warns for now. Across 44 watch modes, dev servers and long tasks run offline, every one exited within 90 ms of the SIGTERM, and 37 left nothing behind: vite, webpack, tsc, jest, Next.js, Nuxt, Astro, wrangler, nodemon, concurrently and more stop their own children. All 7 warnings were real, with the process still running 5 seconds later: `npm run dev`, `npm run serve` and `npx vite`, because npm dies on SIGTERM without passing it on (run `node` directly in a container or a process manager), and shell wrappers such as `sh -c 'node server.js'` or `bash -c 'sleep 30; echo done'`. Nothing ignored SIGTERM or printed a stack trace.
 
 ### restore
 
@@ -313,6 +328,18 @@ process.once('SIGINT', async () => {
 
 That matters to the shell that started you: bash stops a script on Ctrl-C only when the program died by the signal. After an exit with 130 or 0, the script carries on to its next command; 130 at least stops `&&` chains and `set -e`, which 0 doesn't.
 
+**sigterm:** stop what you started before you exit. Pass the signal on to each child and wait for it:
+
+```js
+const server = spawn(process.execPath, ['server.js'], { stdio: 'inherit' });
+process.once('SIGTERM', () => {
+  server.once('exit', () => process.exit(0));
+  server.kill('SIGTERM');
+});
+```
+
+A shell wrapper should `exec` its last command (`sh -c 'exec node server.js'`), so the signal goes straight to it instead of to a shell that dies and leaves it running.
+
 **restore:** switch every mode back off on the way out, including after Ctrl-C. Node runs `exit` handlers on `process.exit()` but not when a signal kills it, so turn SIGINT into an exit, and in raw mode, where Ctrl-C arrives as the key `\x03`, exit on that key too:
 
 ```js
@@ -334,7 +361,7 @@ Also escape U+2028, U+2029 and the bidi controls (U+202A to U+202E, U+2066 to U+
 
 ## Safety
 
-cliprobe runs the target in your current directory without a shell, with stdin closed (`/dev/null`; the stdin and ctrl-c checks use a pipe that they never write to), a temporary `HOME`, and a minimal environment (no tokens from your shell). It still executes the program, so only probe programs you trust. By default cliprobe passes only the arguments you give, or `--version` and `--help`, or none with `--bare`; only the baseline check, when you name it, adds an unknown flag. The only input it ever sends is Ctrl-C, from the ctrl-c and restore checks, to probes you write. It kills each run's whole process group on timeout, including under a pseudo-terminal. It runs on macOS and Linux, including Alpine; the terminal checks need the `script` command, which Alpine ships in `util-linux-misc`. Windows isn't supported yet.
+cliprobe runs the target in your current directory without a shell, with stdin closed (`/dev/null`; the stdin, ctrl-c and sigterm checks use a pipe that they never write to), a temporary `HOME`, and a minimal environment (no tokens from your shell). It still executes the program, so only probe programs you trust. By default cliprobe passes only the arguments you give, or `--version` and `--help`, or none with `--bare`; only the baseline check, when you name it, adds an unknown flag. The only input it ever sends is Ctrl-C, from the ctrl-c and restore checks, and SIGTERM, from the sigterm check, to probes you write. It kills each run's whole process group on timeout, including under a pseudo-terminal, and kills whatever a program leaves running in its group when it exits under the sigterm check. It runs on macOS and Linux, including Alpine; the terminal checks need the `script` command, which Alpine ships in `util-linux-misc`. Windows isn't supported yet.
 
 ## Contributing
 
