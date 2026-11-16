@@ -8,10 +8,11 @@ import { cliprobe, fixture } from './helpers/cli.ts';
 const md = new MarkdownIt({ html: true });
 const ESC = String.fromCharCode(0x1b);
 
-const report = (results: Result[], command = 'tool'): Report => ({
+const report = (results: Result[], command = 'tool', strict = false): Report => ({
     version: '9.9.9',
     command,
     checks: [...new Set(results.map((r) => r.check))],
+    strict,
     results,
 });
 

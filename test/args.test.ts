@@ -24,6 +24,24 @@ describe('parseArgs --check', () => {
     });
 });
 
+describe('parseArgs --skip and --strict', () => {
+    it('collects --skip names like --check, separately', () => {
+        const opts = parseArgs(['--skip', 'color', '--skip=restore,stdin', '--check', 'a', 'node']);
+        expect(opts.skip).toEqual(['color', 'restore', 'stdin']);
+        expect(opts.checks).toEqual(['a']);
+    });
+
+    it('rejects --skip without a name', () => {
+        expect(() => parseArgs(['--skip'])).toThrow(/--skip needs a check name/);
+        expect(() => parseArgs(['--skip=', 'node'])).toThrow(/--skip needs a check name/);
+    });
+
+    it('is not strict unless asked', () => {
+        expect(parseArgs(['node']).strict).toBe(false);
+        expect(parseArgs(['--strict', 'node']).strict).toBe(true);
+    });
+});
+
 describe('selectChecks', () => {
     it('selects every check but no info check when no names are given', () => {
         expect(selectChecks([]).checks.map((c) => c.name)).toEqual([
@@ -50,6 +68,19 @@ describe('selectChecks', () => {
 
     it('reports unknown names once each', () => {
         expect(selectChecks(['nope', 'closed-pipe', 'nope']).unknown).toEqual(['nope']);
+    });
+
+    it('leaves out skipped checks, from the defaults or from the named ones', () => {
+        const names = (n: string[], s: string[]): string[] =>
+            selectChecks(n, s).checks.map((c) => c.name);
+        expect(names([], ['color', 'restore'])).not.toContain('color');
+        expect(names([], ['color', 'restore'])).toHaveLength(6);
+        expect(names(['color', 'stdin'], ['color'])).toEqual(['stdin']);
+        expect(names(['color'], ['color'])).toEqual([]);
+    });
+
+    it('reports an unknown skipped name', () => {
+        expect(selectChecks([], ['colour']).unknown).toEqual(['colour']);
     });
 });
 

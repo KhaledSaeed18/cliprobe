@@ -12,7 +12,7 @@ export const SCHEMA_VERSION = 1;
  * The report as JSON. Each result keeps the fields every check shares at the top
  * and moves the check's own measurements into `details`.
  */
-export function formatJson({ version, command, checks, results }: Report): string {
+export function formatJson({ version, command, checks, strict, results }: Report): string {
     return (
         safeJson({
             tool: 'cliprobe',
@@ -20,6 +20,7 @@ export function formatJson({ version, command, checks, results }: Report): strin
             version,
             command,
             checks,
+            strict,
             summary: countVerdicts(results),
             results: results.map(
                 ({ check, invocation, verdict, reason, evidence, ...details }) => ({

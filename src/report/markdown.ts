@@ -26,9 +26,10 @@ export function prose(text: string): string {
     return safe(text).replace(/[\\`*_[\]<>|~&]/g, (c) => `\\${c}`);
 }
 
-function row(r: Result): string {
+function row(r: Result, strict: boolean): string {
+    // Bold marks what makes the job fail: failures, could-not-run, and warnings under --strict.
     const verdict =
-        r.verdict === 'fail' || r.verdict === 'error'
+        r.verdict === 'fail' || r.verdict === 'error' || (strict && r.verdict === 'warn')
             ? `**${r.verdict.toUpperCase()}**`
             : r.verdict.toUpperCase();
     const evidence = r.evidence ? `<br>${code(r.evidence.slice(0, 300), { inTable: true })}` : '';
@@ -42,15 +43,15 @@ function row(r: Result): string {
 }
 
 /** GitHub-flavored Markdown, for a job summary ($GITHUB_STEP_SUMMARY) or a PR comment. */
-export function formatMarkdown({ version, command, results }: Report): string {
+export function formatMarkdown({ version, command, strict, results }: Report): string {
     return [
         `## cliprobe ${version}: ${code(command, { inTable: false })}`,
         '',
-        summaryLine(countVerdicts(results)),
+        summaryLine(countVerdicts(results), strict),
         '',
         '| Check | Verdict | Invocation | Result |',
         '| --- | --- | --- | --- |',
-        ...results.map(row),
+        ...results.map((r) => row(r, strict)),
         '',
     ].join('\n');
 }

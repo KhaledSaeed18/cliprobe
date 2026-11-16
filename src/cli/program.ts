@@ -18,9 +18,12 @@ export interface CliIO {
     platform: NodeJS.Platform;
 }
 
-/** 0 no failures, 1 a check failed, 2 nothing could be judged because something could not run. */
-export function exitCodeFor(results: readonly Result[]): number {
-    if (results.some((r) => r.verdict === 'fail')) return 1;
+/**
+ * 0 no failures, 1 a check failed (or, with `strict`, warned), 2 nothing could be
+ * judged because something could not run.
+ */
+export function exitCodeFor(results: readonly Result[], strict = false): number {
+    if (results.some((r) => r.verdict === 'fail' || (strict && r.verdict === 'warn'))) return 1;
     const judged = results.some((r) => r.verdict !== 'error' && r.verdict !== 'skip');
     if (!judged && results.some((r) => r.verdict === 'error')) return 2;
     return 0;
@@ -46,11 +49,15 @@ export async function run(argv: readonly string[], io: CliIO): Promise<number> {
         out(VERSION + '\n');
         return 0;
     }
-    const { checks, unknown } = selectChecks(opts.checks);
+    const { checks, unknown } = selectChecks(opts.checks, opts.skip);
     if (unknown.length) {
         const available = CHECKS.map((c) => c.name).join(', ');
         const quoted = unknown.map((n) => `"${n}"`).join(', ');
         err(`cliprobe: unknown check ${quoted} (available: ${available})\n`);
+        return 2;
+    }
+    if (checks.length === 0) {
+        err('cliprobe: --skip leaves no check to run\n');
         return 2;
     }
     if (!opts.command) {
@@ -97,6 +104,7 @@ export async function run(argv: readonly string[], io: CliIO): Promise<number> {
         version: VERSION,
         command: opts.command,
         checks: checks.map((c) => c.name),
+        strict: opts.strict,
         results: fixture ? collapseResults(results, fixture) : results,
     };
     const { color } = io;
@@ -112,5 +120,5 @@ export async function run(argv: readonly string[], io: CliIO): Promise<number> {
     } else {
         out(FORMATS[opts.format](report, { color }));
     }
-    return exitCodeFor(results);
+    return exitCodeFor(results, opts.strict);
 }

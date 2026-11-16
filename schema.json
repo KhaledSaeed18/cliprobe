@@ -27,6 +27,10 @@
             },
             "description": "The checks that ran, in order."
         },
+        "strict": {
+            "type": "boolean",
+            "description": "Whether --strict was given, so warnings fail too (exit code 1). Added in 1.1; absent from earlier reports."
+        },
         "summary": {
             "type": "object",
             "description": "How many results have each verdict.",

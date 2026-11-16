@@ -26,22 +26,23 @@ export const CHECKS: readonly Check[] = [
 
 export interface Selection {
     checks: Check[];
-    /** Names that match no check. */
+    /** Names, from either list, that match no check. */
     unknown: string[];
 }
 
 /**
- * Picks checks by name, keeping registry order. No names selects every check of
- * kind "check": info checks only run when named, because they never fail and
- * baseline sends a flag the user did not ask for.
+ * Picks checks by name, keeping registry order, then leaves out those in `skip`.
+ * No names selects every check of kind "check": info checks only run when named,
+ * because they never fail and baseline sends a flag the user did not ask for.
  */
-export function selectChecks(names: readonly string[]): Selection {
-    if (names.length === 0) {
-        return { checks: CHECKS.filter((c) => c.kind === 'check'), unknown: [] };
-    }
+export function selectChecks(names: readonly string[], skip: readonly string[] = []): Selection {
     const known = new Set(CHECKS.map((c) => c.name));
+    const chosen =
+        names.length === 0
+            ? CHECKS.filter((c) => c.kind === 'check')
+            : CHECKS.filter((c) => names.includes(c.name));
     return {
-        checks: CHECKS.filter((c) => names.includes(c.name)),
-        unknown: [...new Set(names.filter((n) => !known.has(n)))],
+        checks: chosen.filter((c) => !skip.includes(c.name)),
+        unknown: [...new Set([...names, ...skip].filter((n) => !known.has(n)))],
     };
 }

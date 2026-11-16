@@ -14,6 +14,10 @@ export interface Options {
     version: boolean;
     /** Check names from --check, in the order given; empty means all. */
     checks: string[];
+    /** Check names from --skip, left out of what --check selects. */
+    skip: string[];
+    /** Exit 1 on a warning too, not only on a failure. */
+    strict: boolean;
     command: string | undefined;
     args: string[];
 }
@@ -27,6 +31,8 @@ export function parseArgs(argv: readonly string[]): Options {
         help: false,
         version: false,
         checks: [],
+        skip: [],
+        strict: false,
         command: undefined,
         args: [],
     };
@@ -38,6 +44,7 @@ export function parseArgs(argv: readonly string[]): Options {
         }
         if (a === '--json') opts.format = 'json';
         else if (a === '--bare') opts.bare = true;
+        else if (a === '--strict') opts.strict = true;
         else if (a === '-o' || a === '--output-file' || a.startsWith('--output-file=')) {
             const value = a.includes('=') ? a.slice(a.indexOf('=') + 1) : argv[++i];
             if (!value) throw new UsageError(`${a.split('=')[0] ?? a} needs a file path`);
@@ -60,14 +67,15 @@ export function parseArgs(argv: readonly string[]): Options {
                     `--timeout needs a positive whole number of milliseconds, got "${String(value)}"`
                 );
             }
-        } else if (a === '--check' || a.startsWith('--check=')) {
+        } else if (/^--(check|skip)(=|$)/.test(a)) {
+            const flag = a.split('=')[0] ?? a;
             const value = a.includes('=') ? a.slice(a.indexOf('=') + 1) : argv[++i];
             const names = (value ?? '')
                 .split(',')
                 .map((n) => n.trim())
                 .filter(Boolean);
-            if (names.length === 0) throw new UsageError('--check needs a check name');
-            opts.checks.push(...names);
+            if (names.length === 0) throw new UsageError(`${flag} needs a check name`);
+            (flag === '--skip' ? opts.skip : opts.checks).push(...names);
         } else if (a.startsWith('-')) throw new UsageError(`unknown option "${a}"`);
         else {
             // No "--": the first bare argument starts the command.
