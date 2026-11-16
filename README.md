@@ -31,7 +31,7 @@ npx cliprobe -- esbuild
 ```
 
 ```
-cliprobe 0.10.0: closed-pipe, color, pipe-escapes, stdin, ctrl-c, sigterm, restore, control-chars checks for esbuild
+cliprobe 1.0.0: closed-pipe, color, pipe-escapes, stdin, ctrl-c, sigterm, restore, control-chars checks for esbuild
 
 closed-pipe
   FAIL   esbuild --version  crashed when stdout was closed (exit 0 -> 1)
@@ -87,6 +87,8 @@ The other checks cover the rest of what goes wrong between a program and the thi
 - [Usage](#usage)
 - [Exit codes](#exit-codes)
 - [In CI](#in-ci)
+- [JSON output](#json-output)
+- [Stability](#stability)
 - [Checks](#checks): [closed-pipe](#closed-pipe), [color](#color), [pipe-escapes](#pipe-escapes), [stdin](#stdin), [ctrl-c](#ctrl-c), [sigterm](#sigterm), [restore](#restore), [control-chars](#control-chars), [info checks](#info-checks)
 - [Fixing a failure in a Node.js CLI](#fixing-a-failure-in-a-nodejs-cli)
 - [Safety](#safety)
@@ -147,13 +149,13 @@ A failed check exits 1, so the step fails. In GitHub Actions, write a Markdown r
 
 ```yaml
 - name: Check the CLI for terminal-edge bugs
-  run: npx --yes cliprobe@0 --format markdown --output-file "$GITHUB_STEP_SUMMARY" -- node ./dist/cli.js
+  run: npx --yes cliprobe@1 --format markdown --output-file "$GITHUB_STEP_SUMMARY" -- node ./dist/cli.js
 ```
 
 For CI systems that read test results, write JUnit XML instead and keep it even when the step fails:
 
 ```yaml
-- run: npx --yes cliprobe@0 --format junit --output-file reports/cliprobe.xml -- node ./dist/cli.js
+- run: npx --yes cliprobe@1 --format junit --output-file reports/cliprobe.xml -- node ./dist/cli.js
 - uses: actions/upload-artifact@v7
   if: always()
   with:
@@ -162,6 +164,47 @@ For CI systems that read test results, write JUnit XML instead and keep it even 
 ```
 
 In JUnit, each check is a test suite and each probe a test case: `FAIL` is a failure, could-not-run an error, `SKIP` skipped; `WARN`, `INFO` and `PASS` pass, with the verdict and reason in the case's output.
+
+## JSON output
+
+`--format json` (or `--json`) writes one report, described by a JSON Schema that ships in the package as `cliprobe/schema.json`:
+
+```json
+{
+  "tool": "cliprobe",
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "command": "node",
+  "checks": ["ctrl-c"],
+  "summary": { "pass": 0, "fail": 1, "warn": 0, "skip": 0, "error": 0, "info": 0 },
+  "results": [
+    {
+      "check": "ctrl-c",
+      "invocation": ["node", "server.js"],
+      "verdict": "fail",
+      "reason": "ignored Ctrl-C: still running 3 s later",
+      "details": {
+        "sentAfterMs": 1003,
+        "exitedAfterMs": null,
+        "exitCode": null,
+        "signal": "SIGKILL",
+        "stderrAfter": ""
+      }
+    }
+  ]
+}
+```
+
+Every result has the same five fields: `check`, `invocation` (the command and arguments that ran), `verdict` (`pass`, `fail`, `warn`, `skip`, `error` for could-not-run, or `info`), `reason` (a sentence for a person) and `details`, plus `evidence` when there is a line to quote. `details` holds the check's own measurements, such as exit codes, timings, the terminal modes left on or the processes left running; the schema describes each check's. Text from the program under test is escaped: control characters, line separators and bidi overrides appear as `\u` escapes, so the report can't drive a terminal when printed.
+
+## Stability
+
+From 1.0, cliprobe follows semantic versioning, and these hold for every 1.x release:
+
+- **No new failures.** A minor release never makes a passing or warning program fail. New checks, and new things an existing check notices, only warn until the next major release. So `cliprobe@1` in CI turns red only when your program changes.
+- **Names and exit codes.** Check names, verdicts, options and exit codes stay as they are.
+- **JSON.** `schemaVersion` stays `1`. Fields are only added, never removed, renamed or given a new type.
+- **Not covered.** The wording of `reason` and `evidence`, and the human and Markdown output, are for people and may change. Match on `check` and `verdict`, not on text.
 
 ## Checks
 
@@ -269,7 +312,7 @@ Put `{fixture}` in the arguments where your command takes a path, for example `n
 | `WARN`  | Printed a C1 control, carriage return or newline from a file name unescaped, which can hide or forge output                                       |
 | `SKIP`  | No `{fixture}` in the arguments, the command never printed the file names (before the timeout, for one that keeps running), or no usable `script` |
 
-Only the terminal run is judged. Into a pipe, `ls` and `find` print names exactly, by design; that is recorded in the JSON (`pipeRaw`) but doesn't affect the verdict. BSD `find` on macOS fails this check: unlike GNU `find`, it prints names raw even to a terminal.
+Only the terminal run is judged. Into a pipe, `ls` and `find` print names exactly, by design; that is recorded in the JSON (`details.pipeRaw`) but doesn't affect the verdict. BSD `find` on macOS fails this check: unlike GNU `find`, it prints names raw even to a terminal.
 
 ### Info checks
 
