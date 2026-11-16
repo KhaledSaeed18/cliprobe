@@ -45,16 +45,17 @@ describe('cli', () => {
             '--timeout',
             '3000',
             '--check',
-            'ctrl-c,restore',
+            'ctrl-c,sigterm,restore',
             '--',
             leaky,
         ]);
         const report = JSON.parse(r.stdout) as Report;
         expect(report.results.map((x) => [x.check, x.invocation, x.verdict])).toEqual([
             ['ctrl-c', [leaky], 'pass'],
+            ['sigterm', [leaky], 'pass'],
             ['restore', [leaky], 'warn'],
         ]);
-        expect(report.results[1]?.reason).toMatch(/after Ctrl-C/);
+        expect(report.results[2]?.reason).toMatch(/after Ctrl-C/);
         expect(r.status).toBe(0);
     });
 
