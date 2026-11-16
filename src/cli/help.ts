@@ -27,10 +27,11 @@ Checks:
                 as agents and CI runners often leave it. Fails if --version or
                 --help waits for input; for your own probes, warns if it
                 prompts and skips if it reads stdin like a filter.
-  ctrl-c        Sends Ctrl-C (SIGINT) after 1 s. Fails if the command is still
-                running 3 s later or prints a stack trace; warns if it exits 0.
-                Skipped when the command finishes first, so probe a command
-                that keeps running (a watcher, a server, a long task).
+  ctrl-c        Sends Ctrl-C (SIGINT) after 1 s, with stdin left open as in a
+                terminal. Fails if the command is still running 3 s later or
+                prints a stack trace; warns if it exits 0. Skipped when the
+                command finishes first, so probe a command that keeps running
+                (a watcher, a server, a long task).
   restore       Runs the command under a terminal and, for your own probes,
                 types Ctrl-C after 1 s, as a person would. Warns if it leaves
                 the cursor hidden, the alternate screen, mouse or focus
@@ -68,5 +69,5 @@ Options:
 
 Exit codes: 0 no failures, 1 a check failed, 2 usage error or could not run.
 Runs the target in the current directory without a shell, with stdin closed
-(the stdin check uses a pipe it never writes to), a temporary HOME and a
-minimal environment. Only run programs you trust.`;
+(the stdin and ctrl-c checks use a pipe they never write to), a temporary HOME
+and a minimal environment. Only run programs you trust.`;

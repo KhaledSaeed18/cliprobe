@@ -36,6 +36,7 @@ describe('ctrl-c: fixtures', () => {
         ['throws', 'fail', /stack trace/],
         ['python-trace', 'fail', /stack trace/],
         ['quick', 'skip', /finished in \d+ ms, before Ctrl-C/],
+        ['serves-until-eof', 'pass', /stopped by SIGINT/],
     ])('%s -> %s', async (name, verdict, reason) => {
         const { result } = await probe(ctrlFixture(name));
         expect(result.verdict).toBe(verdict);
@@ -97,6 +98,7 @@ describe('ctrl-c: real tools', () => {
     it.each([
         ['sleep', ['sleep', '30']],
         ['tail -f', ['tail', '-f', '/dev/null']],
+        ['cat -, which waits on the open stdin as in a terminal', ['cat', '-']],
         ['node with a timer', [node, '-e', 'setInterval(() => {}, 1000)']],
     ])('%s passes', async (_name, command) => {
         expect((await probe(command)).result.verdict).toBe('pass');
