@@ -120,12 +120,15 @@ npx cliprobe --format junit -o report.xml -- <command>   # JUnit file for CI; hu
 npx cliprobe -- ls {fixture}              # {fixture}: a directory of hostile file names
 npx cliprobe --bare -- htop               # the command alone: a REPL, a full-screen program, a server
 npx cliprobe --check startup,baseline -- node ./dist/cli.js   # info checks, only when named
+npx cliprobe --strict --skip restore -- node ./dist/cli.js server   # warnings fail too, except restore's
 ```
 
 | Option                       | Meaning                                                                                                                        |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `--bare`                     | Probe the command with no arguments instead of `--version` and `--help`, as a probe you wrote                                  |
 | `--check <name>`             | Run only this check; repeat it or use commas for several                                                                       |
+| `--skip <name>`              | Leave this check out; repeat it or use commas for several                                                                      |
+| `--strict`                   | Exit 1 on a warning too, not only on a failure                                                                                 |
 | `--format <name>`            | Output format: `human` (default), `json`, `markdown` (a GitHub job summary or PR comment) or `junit` (XML for CI test reports) |
 | `--json`                     | Same as `--format json`                                                                                                        |
 | `-o`, `--output-file <path>` | Write the `--format` report to a file (atomically, creating parent folders); the human report still prints                     |
@@ -138,14 +141,14 @@ npx cliprobe --check startup,baseline -- node ./dist/cli.js   # info checks, onl
 | Code | Meaning                                   |
 | ---- | ----------------------------------------- |
 | `0`  | No check failed                           |
-| `1`  | A check failed                            |
+| `1`  | A check failed, or warned with `--strict` |
 | `2`  | Usage error, or the command could not run |
 
 A command that isn't on `PATH` is reported once, before any check runs, with exit `2` and no report. That makes cliprobe usable as a CI gate.
 
 ## In CI
 
-A failed check exits 1, so the step fails. In GitHub Actions, write a Markdown report to the job summary while the log keeps the human report:
+A failed check exits 1, so the step fails. Warnings don't fail it unless you add `--strict`; with `--strict`, `--skip` leaves out a check whose warning you accept. In GitHub Actions, write a Markdown report to the job summary while the log keeps the human report:
 
 ```yaml
 - name: Check the CLI for terminal-edge bugs
@@ -176,6 +179,7 @@ In JUnit, each check is a test suite and each probe a test case: `FAIL` is a fai
   "version": "1.0.0",
   "command": "node",
   "checks": ["ctrl-c"],
+  "strict": false,
   "summary": { "pass": 0, "fail": 1, "warn": 0, "skip": 0, "error": 0, "info": 0 },
   "results": [
     {
@@ -195,7 +199,7 @@ In JUnit, each check is a test suite and each probe a test case: `FAIL` is a fai
 }
 ```
 
-Every result has the same five fields: `check`, `invocation` (the command and arguments that ran), `verdict` (`pass`, `fail`, `warn`, `skip`, `error` for could-not-run, or `info`), `reason` (a sentence for a person) and `details`, plus `evidence` when there is a line to quote. `details` holds the check's own measurements, such as exit codes, timings, the terminal modes left on or the processes left running; the schema describes each check's. Text from the program under test is escaped: control characters, line separators and bidi overrides appear as `\u` escapes, so the report can't drive a terminal when printed.
+`strict` says whether `--strict` was given (added in 1.1). Every result has the same five fields: `check`, `invocation` (the command and arguments that ran), `verdict` (`pass`, `fail`, `warn`, `skip`, `error` for could-not-run, or `info`), `reason` (a sentence for a person) and `details`, plus `evidence` when there is a line to quote. `details` holds the check's own measurements, such as exit codes, timings, the terminal modes left on or the processes left running; the schema describes each check's. Text from the program under test is escaped: control characters, line separators and bidi overrides appear as `\u` escapes, so the report can't drive a terminal when printed.
 
 ## Stability
 
@@ -203,6 +207,7 @@ From 1.0, cliprobe follows semantic versioning, and these hold for every 1.x rel
 
 - **No new failures.** A minor release never makes a passing or warning program fail. New checks, and new things an existing check notices, only warn until the next major release. So `cliprobe@1` in CI turns red only when your program changes.
 - **Names and exit codes.** Check names, verdicts, options and exit codes stay as they are.
+- **`--strict` opts out of the first promise.** It fails on warnings, so a new warning in a minor release can fail your build. Pin an exact version (`cliprobe@1.1.0`) if that matters, or `--skip` the check.
 - **JSON.** `schemaVersion` stays `1`. Fields are only added, never removed, renamed or given a new type.
 - **Not covered.** The wording of `reason` and `evidence`, and the human and Markdown output, are for people and may change. Match on `check` and `verdict`, not on text.
 
