@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.0](https://github.com/KhaledSaeed18/cliprobe/compare/v1.1.1...v1.2.0) (2026-11-16)
+
+### Features
+
+* **cli:** add --probe to run several invocations in one run ([f28deaa](https://github.com/KhaledSaeed18/cliprobe/commit/f28deaab24f9fe95461f44c2e6ec85eb5d3908c9))
+
 ## [1.1.1](https://github.com/KhaledSaeed18/cliprobe/compare/v1.1.0...v1.1.1) (2026-11-16)
 
 ## [1.1.0](https://github.com/KhaledSaeed18/cliprobe/compare/v1.0.0...v1.1.0) (2026-11-16)
