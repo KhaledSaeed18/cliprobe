@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.8.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.7.1...v0.8.0) (2026-11-16)
+
+### Features
+
+* **pipe-escapes:** fail on escape sequences in a pipe ([4a9fd72](https://github.com/KhaledSaeed18/cliprobe/commit/4a9fd722156b65f125b8aa449a9205e97efea7cb))
+
 ## [0.7.1](https://github.com/KhaledSaeed18/cliprobe/compare/v0.7.0...v0.7.1) (2026-11-13)
 
 ## [0.7.0](https://github.com/KhaledSaeed18/cliprobe/compare/v0.6.0...v0.7.0) (2026-11-12)
