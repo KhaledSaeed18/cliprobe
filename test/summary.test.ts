@@ -29,4 +29,10 @@ describe('summary', () => {
             '0 failed, 0 warned, 0 passed, 0 skipped, 1 info, 1 could not run'
         );
     });
+
+    it('says when --strict makes warnings fail', () => {
+        expect(summaryLine(countVerdicts([result('warn')]), true)).toBe(
+            '0 failed, 1 warned, 0 passed, 0 skipped (--strict: warnings fail)'
+        );
+    });
 });

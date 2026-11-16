@@ -14,7 +14,7 @@ const COLORS: Record<Verdict, number> = {
 };
 
 export function formatHuman(
-    { version, command, checks, results }: Report,
+    { version, command, checks, strict, results }: Report,
     { color }: RenderOptions
 ): string {
     const paint = (verdict: Verdict): string => {
@@ -39,6 +39,6 @@ export function formatHuman(
             }
         }
     }
-    lines.push('', summaryLine(countVerdicts(results)));
+    lines.push('', summaryLine(countVerdicts(results), strict));
     return lines.join('\n') + '\n';
 }

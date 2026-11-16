@@ -6,6 +6,8 @@ export interface Report {
     command: string;
     /** The checks that ran, in order. */
     checks: readonly string[];
+    /** --strict: warnings fail too. */
+    strict: boolean;
     results: readonly Result[];
 }
 

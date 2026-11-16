@@ -60,6 +60,8 @@ Options:
   --bare             Probe the command with no arguments (a REPL, a full-screen
                      program, a server) instead of --version and --help
   --check <name>     Run only this check; repeat it or use commas for several
+  --skip <name>      Leave this check out; repeat it or use commas for several
+  --strict           Exit 1 on a warning too, not only on a failure
   --format <name>    Output format: human (default), json, markdown (a CI job
                      summary or PR comment) or junit (XML for CI test reports)
   --json             Same as --format json
@@ -72,7 +74,8 @@ Options:
   -h, --help         Show this help
   -v, --version      Show the version
 
-Exit codes: 0 no failures, 1 a check failed, 2 usage error or could not run.
+Exit codes: 0 no failures, 1 a check failed (or warned, with --strict), 2 usage
+error or could not run.
 Runs the target in the current directory without a shell, with stdin closed
 (the stdin, ctrl-c and sigterm checks use a pipe they never write to), a
 temporary HOME and a minimal environment. Only run programs you trust.`;

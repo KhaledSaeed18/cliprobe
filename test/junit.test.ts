@@ -38,10 +38,11 @@ const result = (verdict: Result['verdict'], extra: Partial<Result> = {}): Result
     ...extra,
 });
 
-const report = (results: Result[]): Report => ({
+const report = (results: Result[], strict = false): Report => ({
     version: '9.9.9',
     command: 'tool',
     checks: [...new Set(results.map((r) => r.check))],
+    strict,
     results,
 });
 
