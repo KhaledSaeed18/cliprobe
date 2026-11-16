@@ -4,6 +4,11 @@ name: CI
 on:
   pull_request:
   workflow_call:
+    inputs:
+      skip_macos:
+        description: Leave out the macOS job, which the pull request already ran
+        type: boolean
+        default: false
   workflow_dispatch:
 
 permissions:
@@ -80,10 +85,10 @@ jobs:
         node: [22, 24, 26]
         # macOS runners are scarce and often queue until GitHub cancels the job, so
         # macOS gets one job on the oldest supported Node. Its own code paths (BSD
-        # script(1), sockets as stdin) don't depend on the Node version.
-        include:
-          - os: macos-latest
-            node: 22
+        # script(1), sockets as stdin) don't depend on the Node version. A release
+        # leaves it out (skip_macos): the pull request ran it on the same code, and a
+        # job GitHub never starts would otherwise block the publish.
+        include: ${{ fromJSON(inputs.skip_macos == true && '[]' || '[{"os":"macos-latest","node":22}]') }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
