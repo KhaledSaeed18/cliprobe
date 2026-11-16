@@ -35,7 +35,7 @@ Run `pnpm check` before pushing.
 - **Evidence, never a score.** Every result is pass, fail, warn, skip, error or info, with the evidence attached.
 - **No false fails.** A new check starts as warn-only and is calibrated against real tools (the census of the top-100 npm CLIs, run in Docker) before it may fail.
 - **Deterministic.** No races: a closed pipe is a FIFO closed before spawn, Ctrl-C is a signal to the process group, the PTY gets an 80x24 window.
-- **Safety.** No shell; detached process group, whole group killed on timeout (including under the PTY); stdin is `/dev/null`, except that the stdin check gives it a pipe it never writes to and then closes; the only input ever sent is Ctrl-C (a signal in ctrl-c, a typed key in restore) to probes the user wrote; minimal environment with a temporary `HOME`. Only `baseline`, when named, sends a flag the user didn't give.
+- **Safety.** No shell; detached process group, whole group killed on timeout (including under the PTY); stdin is `/dev/null`, except that the stdin check gives it a pipe it never writes to and then closes, and ctrl-c a pipe it never writes to, as a terminal leaves stdin open; the only input ever sent is Ctrl-C (a signal in ctrl-c, a typed key in restore) to probes the user wrote; minimal environment with a temporary `HOME`. Only `baseline`, when named, sends a flag the user didn't give.
 - **Practise what we check.** Every piece of target text is escaped before output: `safe()` for human output, `safeJson()`, `code()`/`prose()` in Markdown, `xml()` in JUnit. cliprobe survives its own closed stdout.
 
 ## Keep everything in sync
