@@ -31,7 +31,7 @@ npx cliprobe -- tsx
 ```
 
 ```
-cliprobe 1.1.0: closed-pipe, color, pipe-escapes, stdin, ctrl-c, sigterm, restore, control-chars checks for tsx
+cliprobe 1.2.0: closed-pipe, color, pipe-escapes, stdin, ctrl-c, sigterm, restore, control-chars checks for tsx
 
 closed-pipe
   FAIL   tsx --version  crashed when stdout was closed (exit 0 -> 1)
@@ -52,17 +52,17 @@ stdin
   PASS   tsx --help     finished without waiting for stdin
 
 ctrl-c
-  SKIP   tsx            needs probe args that keep it running, such as a watch or serve command, or --bare
+  SKIP   tsx            needs a probe that keeps running, such as a watch or serve command (--probe), or --bare
 
 sigterm
-  SKIP   tsx            needs probe args that keep it running, such as a watch or serve command, or --bare
+  SKIP   tsx            needs a probe that keeps running, such as a watch or serve command (--probe), or --bare
 
 restore
   PASS   tsx --version  left no terminal mode switched on when it exited
   PASS   tsx --help     left no terminal mode switched on when it exited
 
 control-chars
-  SKIP   tsx            no {fixture} in the arguments; put it where the command takes a path, e.g. ls {fixture}
+  SKIP   tsx            no {fixture} in the arguments; add a probe that takes a path, e.g. --probe "ls {fixture}"
 
 2 failed, 0 warned, 8 passed, 3 skipped
 ```
@@ -116,6 +116,7 @@ npm install --save-dev cliprobe    # or: pnpm add -D cliprobe
 ```sh
 npx cliprobe -- <command>                 # probes "<command> --version" and "<command> --help"
 npx cliprobe -- <command> [args...]       # probes exactly this invocation
+npx cliprobe --probe "watch app.ts" -- tsx   # adds a probe: --version, --help and "watch app.ts"
 npx cliprobe -- node ./dist/cli.js list   # test your own CLI before publishing
 npx cliprobe --json -- <command>          # machine-readable results
 npx cliprobe --format junit -o report.xml -- <command>   # JUnit file for CI; human report on stdout
@@ -125,18 +126,19 @@ npx cliprobe --check startup,baseline -- node ./dist/cli.js   # info checks, onl
 npx cliprobe --strict --skip restore -- node ./dist/cli.js server   # warnings fail too, except restore's
 ```
 
-| Option                       | Meaning                                                                                                                        |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `--bare`                     | Probe the command with no arguments instead of `--version` and `--help`, as a probe you wrote                                  |
-| `--check <name>`             | Run only this check; repeat it or use commas for several                                                                       |
-| `--skip <name>`              | Leave this check out; repeat it or use commas for several                                                                      |
-| `--strict`                   | Exit 1 on a warning too, not only on a failure                                                                                 |
-| `--format <name>`            | Output format: `human` (default), `json`, `markdown` (a GitHub job summary or PR comment) or `junit` (XML for CI test reports) |
-| `--json`                     | Same as `--format json`                                                                                                        |
-| `-o`, `--output-file <path>` | Write the `--format` report to a file (atomically, creating parent folders); the human report still prints                     |
-| `--timeout <ms>`             | Kill a probe after this long (default 15000); a command still running then is judged on what it did so far                     |
-| `-h`, `--help`               | Show help                                                                                                                      |
-| `-v`, `--version`            | Show the version                                                                                                               |
+| Option                       | Meaning                                                                                                                                   |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `--bare`                     | Probe the command with no arguments instead of `--version` and `--help`, as a probe you wrote                                             |
+| `--probe <args>`             | Also probe `<command> <args>`; repeat it for several. Split like a shell command line (quotes and backslashes, no variables or wildcards) |
+| `--check <name>`             | Run only this check; repeat it or use commas for several                                                                                  |
+| `--skip <name>`              | Leave this check out; repeat it or use commas for several                                                                                 |
+| `--strict`                   | Exit 1 on a warning too, not only on a failure                                                                                            |
+| `--format <name>`            | Output format: `human` (default), `json`, `markdown` (a GitHub job summary or PR comment) or `junit` (XML for CI test reports)            |
+| `--json`                     | Same as `--format json`                                                                                                                   |
+| `-o`, `--output-file <path>` | Write the `--format` report to a file (atomically, creating parent folders); the human report still prints                                |
+| `--timeout <ms>`             | Kill a probe after this long (default 15000); a command still running then is judged on what it did so far                                |
+| `-h`, `--help`               | Show help                                                                                                                                 |
+| `-v`, `--version`            | Show the version                                                                                                                          |
 
 ## Exit codes
 
@@ -150,7 +152,7 @@ A command that isn't on `PATH` is reported once, before any check runs, with exi
 
 ## In CI
 
-A failed check exits 1, so the step fails. Warnings don't fail it unless you add `--strict`; with `--strict`, `--skip` leaves out a check whose warning you accept. In GitHub Actions, write a Markdown report to the job summary while the log keeps the human report:
+A failed check exits 1, so the step fails. Warnings don't fail it unless you add `--strict`; with `--strict`, `--skip` leaves out a check whose warning you accept. Add `--probe` for a command that keeps running and one with `{fixture}`, so a single step covers every check. In GitHub Actions, write a Markdown report to the job summary while the log keeps the human report:
 
 ```yaml
 - name: Check the CLI for terminal-edge bugs
@@ -217,7 +219,13 @@ From 1.0, cliprobe follows semantic versioning, and these hold for every 1.x rel
 
 A default run does the eight checks below: closed-pipe, color, pipe-escapes, stdin, ctrl-c, sigterm, restore and control-chars. Each one reports evidence, never a score. Two info checks, startup and baseline, run only when you name them with `--check`.
 
-A command that keeps running, such as a server, a watcher or a full-screen program, is what ctrl-c, sigterm and restore need. The other checks judge it on what it did before the timeout (`--timeout`, 15 seconds by default): a crash once stdout is closed still fails, color or a spinner in a pipe still counts, and stdin is skipped. The timeout is paid once: after the first check sees the command still running, the others watch it for 3 seconds.
+A command that keeps running, such as a server, a watcher or a full-screen program, is what ctrl-c, sigterm and restore need. Give it after the command, or add it with `--probe` to keep the `--version` and `--help` probes in the same run; ctrl-c and sigterm only run the probes you name, and control-chars only those with `{fixture}`, so one run covers every check:
+
+```sh
+npx cliprobe --probe "serve --port 0" --probe "scan {fixture}" -- my-cli
+```
+
+The other checks judge it on what it did before the timeout (`--timeout`, 15 seconds by default): a crash once stdout is closed still fails, color or a spinner in a pipe still counts, and stdin is skipped. The timeout is paid once: after the first check sees the command still running, the others watch it for 3 seconds.
 
 ### closed-pipe
 
@@ -310,7 +318,7 @@ It only warns: a terminal left in the wrong mode is a nuisance you can undo, not
 
 ### control-chars
 
-Put `{fixture}` in the arguments where your command takes a path, for example `npx cliprobe -- ls {fixture}` or `npx cliprobe -- node ./dist/cli.js scan --dir={fixture}`. cliprobe replaces it with a temporary directory of file names holding escape sequences (one sets the window title, one clears the screen), a C1 control character, a carriage return, a newline and a bidirectional override. It runs the command under a terminal and looks for those characters, unescaped, in what reaches it. A file name that can clear someone's screen or retitle their window is a terminal injection, the same bug class as the `ls`/`find` escaping that GNU coreutils added years ago. Reports show `{fixture}`, never the temporary path, and the directory is removed afterwards. Results:
+Put `{fixture}` in the arguments where your command takes a path, for example `npx cliprobe -- ls {fixture}`, `npx cliprobe -- node ./dist/cli.js scan --dir={fixture}` or `npx cliprobe --probe "scan {fixture}" -- my-cli`. cliprobe replaces it with a temporary directory of file names holding escape sequences (one sets the window title, one clears the screen), a C1 control character, a carriage return, a newline and a bidirectional override. It runs the command under a terminal and looks for those characters, unescaped, in what reaches it. A file name that can clear someone's screen or retitle their window is a terminal injection, the same bug class as the `ls`/`find` escaping that GNU coreutils added years ago. Reports show `{fixture}`, never the temporary path, and the directory is removed afterwards. Results:
 
 | Verdict | Meaning                                                                                                                                           |
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -323,7 +331,7 @@ Only the terminal run is judged. Into a pipe, `ls` and `find` print names exactl
 
 ### Info checks
 
-These report an observation with the verdict `INFO` and never fail. They run only when named, for example `--check startup,baseline`. With probe args, those args are treated as the program: `npx cliprobe --check baseline -- node ./dist/cli.js` probes `node ./dist/cli.js --version`, and so on.
+These report an observation with the verdict `INFO` and never fail. They run only when named, for example `--check startup,baseline`. With args after the command, those args are treated as the program (`--probe` adds probes, not a different program): `npx cliprobe --check baseline -- node ./dist/cli.js` probes `node ./dist/cli.js --version`, and so on.
 
 **startup**. The median wall time over 5 runs, after one warm-up, of `<command> --version`, or of the probe exactly as given. It's skipped if that invocation exits non-zero.
 
@@ -411,7 +419,7 @@ Also escape U+2028, U+2029 and the bidi controls (U+202A to U+202E, U+2066 to U+
 
 ## Safety
 
-cliprobe runs the target in your current directory without a shell, with stdin closed (`/dev/null`; the stdin, ctrl-c and sigterm checks use a pipe that they never write to), a temporary `HOME`, and a minimal environment (no tokens from your shell). It still executes the program, so only probe programs you trust. By default cliprobe passes only the arguments you give, or `--version` and `--help`, or none with `--bare`; only the baseline check, when you name it, adds an unknown flag. The only input it ever sends is Ctrl-C, from the ctrl-c and restore checks, and SIGTERM, from the sigterm check, to probes you write. It kills each run's whole process group on timeout, including under a pseudo-terminal, and kills whatever a program leaves running in its group when it exits under the sigterm check. It runs on macOS and Linux, including Alpine; the terminal checks need the `script` command, which Alpine ships in `util-linux-misc`. Windows isn't supported yet.
+cliprobe runs the target in your current directory without a shell, with stdin closed (`/dev/null`; the stdin, ctrl-c and sigterm checks use a pipe that they never write to), a temporary `HOME`, and a minimal environment (no tokens from your shell). It still executes the program, so only probe programs you trust. By default cliprobe passes only the arguments you give, after the command or with `--probe`, or `--version` and `--help`, or none with `--bare`; only the baseline check, when you name it, adds an unknown flag. The only input it ever sends is Ctrl-C, from the ctrl-c and restore checks, and SIGTERM, from the sigterm check, to probes you write. It kills each run's whole process group on timeout, including under a pseudo-terminal, and kills whatever a program leaves running in its group when it exits under the sigterm check. It runs on macOS and Linux, including Alpine; the terminal checks need the `script` command, which Alpine ships in `util-linux-misc`. Windows isn't supported yet.
 
 ## Contributing
 
