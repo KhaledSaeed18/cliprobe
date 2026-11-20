@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.4.0](https://github.com/KhaledSaeed18/cliprobe/compare/v1.3.0...v1.4.0) (2026-11-20)
+
+### Features
+
+* **ctrl-c:** warn when processes that ignored the Ctrl-C are left running ([d84333f](https://github.com/KhaledSaeed18/cliprobe/commit/d84333f89657e4cdbb2125b7c7999a6d446aec42)), closes [#28](https://github.com/KhaledSaeed18/cliprobe/issues/28)
+
+### Bug Fixes
+
+* **run:** judge each run on the program's exit and kill what it left running ([dd9c963](https://github.com/KhaledSaeed18/cliprobe/commit/dd9c963dda5d8fd02add7aa32b9aafc0d757a74d)), closes [#27](https://github.com/KhaledSaeed18/cliprobe/issues/27) [#41](https://github.com/KhaledSaeed18/cliprobe/issues/41)
+* stop the probes and remove temp dirs when cliprobe is interrupted ([3fef818](https://github.com/KhaledSaeed18/cliprobe/commit/3fef8185e266173104d9fd813708e6850cc08689)), closes [#26](https://github.com/KhaledSaeed18/cliprobe/issues/26)
+
 ## [1.3.0](https://github.com/KhaledSaeed18/cliprobe/compare/v1.2.1...v1.3.0) (2026-11-20)
 
 ### Features
