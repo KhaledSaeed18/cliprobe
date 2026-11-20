@@ -1,11 +1,14 @@
 import { crashEvidence, TRACE_RE } from '../core/evidence.ts';
 import { run, type RunResult } from '../core/run.ts';
 import type { Check, Judgement, Result } from '../core/types.ts';
+import { describeLeftovers } from './sigterm.ts';
 
 /** How long the program runs before Ctrl-C. */
 export const CTRL_C_DELAY_MS = 1000;
 /** How long it gets to exit after Ctrl-C. */
 export const CTRL_C_GRACE_MS = 3000;
+/** How long the rest of its group gets to follow it once it has exited. */
+export const CTRL_C_LEFTOVERS_MS = 1000;
 
 /** Lines worth quoting from a trace printed on Ctrl-C, best first. */
 const TRACE_MESSAGES: readonly RegExp[] = [
@@ -20,6 +23,8 @@ export interface CtrlCResult extends Result {
     exitedAfterMs: number | null;
     exitCode: number | null;
     signal: NodeJS.Signals | null;
+    /** Command lines of the processes it left running after it exited, in its group or started by it. */
+    leftRunning: string[];
     /** The end of what it printed to stderr after SIGINT. */
     stderrAfter: string;
 }
@@ -47,6 +52,17 @@ export function judgeCtrlC(r: RunResult): Judgement {
             evidence: crashEvidence(after, TRACE_MESSAGES),
         };
     }
+    // The Ctrl-C reached its whole group, as a terminal sends it, so what is still
+    // running ignored it too. A new finding, so a warning (see the README's Stability).
+    const left = r.leftRunning ?? [];
+    if (left.length > 0) {
+        const { count, evidence } = describeLeftovers(left);
+        return {
+            verdict: 'warn',
+            reason: `exited on Ctrl-C in ${ms} but left ${count} running that ignored it`,
+            evidence,
+        };
+    }
     if (r.signal) return { verdict: 'pass', reason: `stopped by ${r.signal} in ${ms}` };
     if (r.exitCode === 130) {
         return { verdict: 'pass', reason: `exited with 130, the Ctrl-C convention, in ${ms}` };
@@ -72,6 +88,7 @@ export async function ctrlC(command: string, args: readonly string[]): Promise<C
         timeout: CTRL_C_DELAY_MS + CTRL_C_GRACE_MS,
         signal: { name: 'SIGINT', afterMs: CTRL_C_DELAY_MS },
         stdin: 'open',
+        leftoversMs: CTRL_C_LEFTOVERS_MS,
     });
     const sent = r.signalSentMs;
     return {
@@ -82,6 +99,7 @@ export async function ctrlC(command: string, args: readonly string[]): Promise<C
         exitedAfterMs: sent === undefined || r.timedOut ? null : r.durationMs - sent,
         exitCode: r.exitCode,
         signal: r.signal,
+        leftRunning: (r.leftRunning ?? []).map((m) => m.command),
         stderrAfter: sent === undefined ? '' : r.stderr.slice(r.stderrAtSignal ?? 0).slice(-2000),
     };
 }
@@ -103,6 +121,7 @@ export const ctrlCCheck: Check = {
                 exitedAfterMs: null,
                 exitCode: null,
                 signal: null,
+                leftRunning: [],
                 stderrAfter: '',
             };
             return [skip];

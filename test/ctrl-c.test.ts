@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
-import { cliprobe, first, fixture, probeJson, runCheck } from './helpers/cli.ts';
+import { cliprobe, endsWith, first, fixture, probeJson, runCheck, running } from './helpers/cli.ts';
 
 const node = process.execPath;
 const only = { checks: ['ctrl-c'] };
@@ -14,6 +14,7 @@ interface CtrlCJson {
         exitedAfterMs: number | null;
         exitCode: number | null;
         signal: string | null;
+        leftRunning: string[];
     };
 }
 
@@ -39,6 +40,7 @@ describe('ctrl-c: fixtures', () => {
         ['python-trace', 'fail', /stack trace/],
         ['quick', 'skip', /finished in \d+ ms, before Ctrl-C/],
         ['serves-until-eof', 'pass', /stopped by SIGINT/],
+        ['leaves-child', 'warn', /exited on Ctrl-C in \d+ ms but left 1 process running/],
     ])('%s -> %s', async (name, verdict, reason) => {
         const { result } = await probe(ctrlFixture(name));
         expect(result.verdict).toBe(verdict);
@@ -66,12 +68,20 @@ describe('ctrl-c: fixtures', () => {
     it('leaves no process behind after a program that ignores Ctrl-C', async () => {
         const [, script] = ctrlFixture('ignores');
         // Only processes that are the fixture itself, not shells that mention its path.
-        const running = (): string[] =>
-            execFileSync('ps', ['-axo', 'args='], { encoding: 'utf8' })
-                .split('\n')
-                .filter((line) => line.startsWith(`${node} ${script}`));
         await probe(ctrlFixture('ignores'));
-        expect(running()).toEqual([]);
+        expect(running((line) => line.startsWith(`${node} ${script}`))).toEqual([]);
+    });
+
+    it('judges the exit, not a child that holds stdout, and kills the child', async () => {
+        const { status, result } = await probe(ctrlFixture('leaves-child'));
+        expect(status).toBe(0);
+        expect(result.details).toMatchObject({ signal: 'SIGINT', exitCode: null });
+        expect(result.details.exitedAfterMs).toBeLessThan(500);
+        expect(result.details.leftRunning).toEqual([
+            expect.stringMatching(/ctrl-c-orphan$/) as unknown,
+        ]);
+        expect(result.evidence).toMatch(/^still running: .*ctrl-c-orphan$/);
+        expect(running(endsWith('ctrl-c-orphan'))).toEqual([]);
     });
 
     it('exits 1 when it fails', async () => {
@@ -104,6 +114,14 @@ describe('ctrl-c: real tools', () => {
         ['node with a timer', [node, '-e', 'setInterval(() => {}, 1000)']],
     ])('%s passes', async (_name, command) => {
         expect((await probe(command)).result.verdict).toBe('pass');
+    });
+
+    it('a shell whose background job ignores Ctrl-C, as POSIX makes it, leaves it running', async () => {
+        const { status, result } = await probe(['sh', '-c', 'sleep 76 & echo started; sleep 30']);
+        expect(status).toBe(0);
+        expect(result.verdict).toBe('warn');
+        expect(result.details.leftRunning).toEqual(['sleep 76']);
+        expect(running((line) => line === 'sleep 76')).toEqual([]);
     });
 
     const hasPython = (() => {

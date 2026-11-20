@@ -454,6 +454,13 @@
                     "type": ["string", "null"],
                     "description": "Signal that ended it, such as \"SIGPIPE\"; null if it exited."
                 },
+                "leftRunning": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Command lines of the processes still running after it exited, in its group or started by it; they ignored the Ctrl-C too. Added in 1.4; absent from earlier reports."
+                },
                 "stderrAfter": {
                     "type": "string",
                     "description": "The last 2000 characters it printed to stderr after SIGINT."
