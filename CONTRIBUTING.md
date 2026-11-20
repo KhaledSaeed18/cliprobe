@@ -12,6 +12,7 @@ By taking part you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 - [Product rules](#product-rules)
 - [Making a change](#making-a-change)
 - [Adding a check](#adding-a-check)
+- [Agent skill](#agent-skill)
 - [Commit messages](#commit-messages)
 - [Pull requests](#pull-requests)
 - [How releases work](#how-releases-work)
@@ -84,7 +85,7 @@ These rules decide whether a change can be merged. [AGENTS.md](AGENTS.md#product
 
 1. Fork the repository and create a branch from `main`.
 2. Make the change with tests. Each behavior gets a small fixture program in `test/fixtures/<check>/` that passes, warns, fails or skips as expected.
-3. Update everything the change touches in the same branch: `src/cli/help.ts`, `schema.json`, the README sections, `AGENTS.md`, the issue forms' check list, and this file. The [pull request template](.github/pull_request_template.md) has the full checklist.
+3. Update everything the change touches in the same branch: `src/cli/help.ts`, `schema.json`, the README sections, the agent skill, `AGENTS.md`, the issue forms' check list, and this file. The [pull request template](.github/pull_request_template.md) has the full checklist.
 4. Run `pnpm check`.
 
 The test suite only runs cliprobe's own fixtures and standard system tools. To try cliprobe on third-party CLIs, run them in a disposable Docker container with networking turned off (`docker run --network none ...`), never on the host.
@@ -98,6 +99,10 @@ The test suite only runs cliprobe's own fixtures and standard system tools. To t
 5. Document it: the help text, a README section with a verdict table, and the check list in `.github/ISSUE_TEMPLATE/wrong_verdict.yml`.
 
 The check ships warn-only. Promoting it to fail waits for calibration and, after 1.0, for the next major release.
+
+## Agent skill
+
+`skills/cliprobe/SKILL.md` teaches coding agents to run cliprobe and act on its report. When you add or rename a check or an option, or change what a check decides, update the skill and its references too: `test/skill.test.ts` fails when the skill uses an option `cliprobe --help` doesn't document, leaves out a check, or when the eval fixtures in `skills/evals/cliprobe/` no longer give the verdicts `evals.json` states. The skill states the oldest cliprobe it supports ("1.2 or later") and asks npx for that range; raise it when the skill starts relying on a newer option. See [skills/README.md](skills/README.md) for running the evals in an agent.
 
 ## Commit messages
 

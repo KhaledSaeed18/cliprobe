@@ -1,0 +1,28 @@
+[
+    { "query": "my CLI crashes with EPIPE when I pipe it into head", "should_trigger": true },
+    {
+        "query": "check that my command-line tool works well in CI and for AI agents",
+        "should_trigger": true
+    },
+    { "query": "does my node cli respect NO_COLOR when piped?", "should_trigger": true },
+    {
+        "query": "my dev server keeps running after Ctrl-C, can you test that",
+        "should_trigger": true
+    },
+    {
+        "query": "before I publish this CLI to npm, test it for pipe and terminal bugs",
+        "should_trigger": true
+    },
+    { "query": "my tool hangs in GitHub Actions waiting for input", "should_trigger": true },
+    { "query": "add a CI step that catches terminal bugs in our CLI", "should_trigger": true },
+    {
+        "query": "the cursor stays hidden after I press Ctrl-C in my spinner",
+        "should_trigger": true
+    },
+    { "query": "write unit tests for the parseArgs function", "should_trigger": false },
+    { "query": "add a --verbose flag to my CLI", "should_trigger": false },
+    { "query": "my HTTP API returns 500 on POST /users", "should_trigger": false },
+    { "query": "make the terminal font bigger in VS Code", "should_trigger": false },
+    { "query": "fix the failing jest test in utils.test.ts", "should_trigger": false },
+    { "query": "explain what a Unix pipe is", "should_trigger": false }
+]
