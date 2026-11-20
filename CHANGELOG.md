@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.1](https://github.com/KhaledSaeed18/cliprobe/compare/v1.4.0...v1.4.1) (2026-11-20)
+
+### Bug Fixes
+
+* report targets that cannot run instead of judging them ([3f9b98b](https://github.com/KhaledSaeed18/cliprobe/commit/3f9b98bd71b702f740cd90809538d6be932815ce)), closes [#34](https://github.com/KhaledSaeed18/cliprobe/issues/34)
+* **report:** escape the reason in the human report ([5320ce2](https://github.com/KhaledSaeed18/cliprobe/commit/5320ce23e9b97451e4135ecf493c10cc1b75fd5b)), closes [#40](https://github.com/KhaledSaeed18/cliprobe/issues/40)
+* **stdin:** give slow programs time before blaming an open stdin ([1b94f86](https://github.com/KhaledSaeed18/cliprobe/commit/1b94f860b38a3ddd5a8a13241a7a0525d43ca3ca)), closes [#39](https://github.com/KhaledSaeed18/cliprobe/issues/39)
+
 ## [1.4.0](https://github.com/KhaledSaeed18/cliprobe/compare/v1.3.0...v1.4.0) (2026-11-20)
 
 ### Features
