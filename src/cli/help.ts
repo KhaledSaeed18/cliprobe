@@ -85,4 +85,5 @@ error or could not run.
 Runs the target in the current directory without a shell, with stdin closed
 (the stdin, ctrl-c and sigterm checks use a pipe they never write to), a
 temporary HOME and a minimal environment. Only run programs you trust. When a
-probe exits, it kills whatever the probe left running.`;
+probe exits, or when cliprobe is stopped, it kills whatever the probe left
+running and removes its temporary files.`;

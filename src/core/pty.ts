@@ -10,6 +10,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { onInterrupt } from './interrupt.ts';
 import { run } from './run.ts';
 
 /**
@@ -150,6 +151,9 @@ export async function runPty(
     const support = ptySupport();
     if (!support.ok) throw new Error(`no PTY: ${support.reason}`);
     const dir = mkdtempSync(join(tmpdir(), 'cliprobe-pty-'));
+    // Registered before run() registers its own cleanup, so it runs after it: the
+    // processes are killed before their directory goes.
+    const unregister = onInterrupt(() => rmSync(dir, { recursive: true, force: true }));
     const pidFile = join(dir, 'pid');
     let launcher = 'script';
     let argv = ptyArgs(support.flavor, pidFile, command, args);
@@ -213,6 +217,7 @@ export async function runPty(
         clearTimeout(typeTimer);
         clearInterval(watchTimer);
         closeKeyboard();
+        unregister();
         rmSync(dir, { recursive: true, force: true });
     }
 }
