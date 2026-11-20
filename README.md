@@ -423,7 +423,9 @@ cliprobe runs the target in your current directory without a shell, with stdin c
 
 ## Contributing
 
-Bug reports and pull requests are welcome. Development needs Node.js 22.12 or later and pnpm (the version is pinned in `package.json`):
+Bug reports and pull requests are welcome. The most useful report is a verdict you believe is wrong: open a [wrong verdict issue](https://github.com/KhaledSaeed18/cliprobe/issues/new?template=wrong_verdict.yml) with the program, its version and the `--format json` report. For a bug in cliprobe itself, an idea for a new check or a gap in these docs, [choose an issue form](https://github.com/KhaledSaeed18/cliprobe/issues/new/choose).
+
+Development needs macOS or Linux, Node.js 22.12 or later and pnpm (the version is pinned in `package.json`):
 
 ```sh
 pnpm install
@@ -431,7 +433,9 @@ pnpm dev --check closed-pipe -- printf hi   # run the CLI from source
 pnpm check                                  # everything CI runs
 ```
 
-[AGENTS.md](https://github.com/KhaledSaeed18/cliprobe/blob/main/AGENTS.md) describes the layout, the product rules and how to add a check. Commits follow [Conventional Commits](https://www.conventionalcommits.org), and every `feat` or `fix` merged to `main` is released to npm.
+[CONTRIBUTING.md](https://github.com/KhaledSaeed18/cliprobe/blob/main/CONTRIBUTING.md) covers the setup, the product rules, adding a check, commit messages and how releases work; [AGENTS.md](https://github.com/KhaledSaeed18/cliprobe/blob/main/AGENTS.md) maps the code. Every `feat` or `fix` merged to `main` is released to npm.
+
+Everyone taking part follows the [Code of Conduct](https://github.com/KhaledSaeed18/cliprobe/blob/main/CODE_OF_CONDUCT.md). Report security vulnerabilities privately, as [SECURITY.md](https://github.com/KhaledSaeed18/cliprobe/blob/main/SECURITY.md) describes, and accessibility barriers as [ACCESSIBILITY.md](https://github.com/KhaledSaeed18/cliprobe/blob/main/ACCESSIBILITY.md) describes.
 
 ## License
 
