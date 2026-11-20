@@ -8,7 +8,21 @@ coverage/
 
 # Logs
 *.log
+npm-debug.log*
 pnpm-debug.log*
 
 # OS files
 .DS_Store
+._*
+Thumbs.db
+ehthumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Scratch space
+tmp/
+temp/
