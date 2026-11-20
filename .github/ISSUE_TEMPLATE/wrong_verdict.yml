@@ -1,0 +1,119 @@
+name: Wrong verdict
+description: cliprobe failed or warned on a program that behaves correctly, or passed one that doesn't.
+title: '[verdict] <check>: <program>'
+labels: [wrong-verdict]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting this. A false fail breaks someone's build for no reason, and a false pass hides a real bug, so these reports matter most.
+
+        cliprobe executes the program it probes. Reproduce with programs you trust, or inside a disposable container.
+
+  - type: dropdown
+    id: check
+    attributes:
+      label: Check
+      description: The check whose verdict is wrong. Run it alone with `--check <name>`.
+      # Pinned to the check registry (src/checks/index.ts) by test/community.test.ts.
+      options:
+        - closed-pipe
+        - color
+        - pipe-escapes
+        - stdin
+        - ctrl-c
+        - sigterm
+        - restore
+        - control-chars
+        - startup
+        - baseline
+    validations:
+      required: true
+
+  - type: dropdown
+    id: direction
+    attributes:
+      label: What went wrong
+      options:
+        - It failed, but the program behaves correctly (false fail)
+        - It warned, but the program behaves correctly (false warning)
+        - It passed, but the program has the bug (false pass)
+        - It skipped or errored, but it should have given a verdict
+    validations:
+      required: true
+
+  - type: input
+    id: program
+    attributes:
+      label: Program and version
+      description: The program you probed, with its exact version and how you installed it.
+      placeholder: tsx 4.23.15, installed with npm install --global tsx
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: cliprobe command
+      description: The exact command you ran.
+      placeholder: npx cliprobe@latest --check closed-pipe -- tsx --version
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: report
+    attributes:
+      label: JSON report
+      description: The same command with `--format json`. It includes the evidence cliprobe used.
+      render: json
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why you think the verdict is wrong
+      description: What the program actually does, and how you checked it, for example `tsx --help | head -n 1` or `tsx --help | cat -v`.
+    validations:
+      required: true
+
+  - type: input
+    id: cliprobe-version
+    attributes:
+      label: cliprobe version
+      description: Output of `cliprobe --version`.
+      placeholder: 1.2.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux (glibc, e.g. Ubuntu or Debian)
+        - Linux (musl, e.g. Alpine)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      description: Output of `node --version`.
+      placeholder: v22.12.0
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I reproduced this with the latest cliprobe release.
+          required: true
+        - label: I searched existing issues for this program and check.
+          required: true

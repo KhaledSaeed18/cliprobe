@@ -1,0 +1,65 @@
+name: Feature request
+description: Propose a new check, option or output format.
+title: '[feature] '
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        cliprobe reports evidence, never a score, and must not produce false fails. A new check therefore starts as warn-only and may only fail after it has been calibrated against real tools. Within 1.x, a minor release never adds a fail; see the [stability promise](https://github.com/KhaledSaeed18/cliprobe#stability).
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of change
+      options:
+        - A new check
+        - A change to an existing check
+        - A new option
+        - A new output format, or a change to one
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: The terminal-edge bug or the workflow gap this would catch or fix. Who runs into it, and when?
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Real programs that show it
+      description: Programs and versions that have the bug, with a command that reproduces it by hand. Real cases decide whether a check is worth adding.
+      placeholder: |
+        - mytool 2.1.0: `mytool list | head -n 1` prints a stack trace (EPIPE)
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: What cliprobe would run, what it would look for, and which verdict it would give. For an option, its name and what it does.
+    validations:
+      required: true
+
+  - type: textarea
+    id: false-results
+    attributes:
+      label: Possible false results
+      description: Programs that would look like they have the bug but behave correctly, and how the check could tell them apart.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Other ways to get the same result, with cliprobe or without it.
+
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contributing
+      options:
+        - label: I'd like to implement this myself, following CONTRIBUTING.md.
