@@ -1,9 +1,8 @@
 # Every issue goes through a form, so reports arrive with what is needed to reproduce them.
+# GitHub adds its own "Report a security vulnerability" entry, since private vulnerability
+# reporting is on, so there is no contact link for it here.
 blank_issues_enabled: false
 contact_links:
-  - name: Report a security vulnerability
-    url: https://github.com/KhaledSaeed18/cliprobe/security/advisories/new
-    about: Report it privately. Please don't open a public issue.
   - name: Read the documentation
     url: https://github.com/KhaledSaeed18/cliprobe#readme
     about: Usage, every check and its verdicts, exit codes, CI setup and how to fix a failure.
