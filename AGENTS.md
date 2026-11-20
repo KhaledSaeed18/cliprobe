@@ -77,6 +77,7 @@ Search the repo for the old wording or numbers (`rg "seven checks"`) before you 
 
 - Node puts a TTY stdin into non-blocking mode, so `fs.readSync(0)` throws `EAGAIN` under a PTY; fixtures that prompt must use stream events.
 - `isolatedDeclarations` is on: exported values need explicit types.
+- `pnpm dev` runs TypeScript directly, which needs Node 22.18 or later; the published package needs only 22.12.
 - Build characters such as U+2028 or U+202E with `String.fromCharCode` in source and tests, rather than `\u` escapes that tooling may decode.
 - Coverage thresholds in `vitest.config.ts` are a ratchet: raise them as coverage grows, never lower them.
 - The `script(1)` flavors differ (BSD on macOS, util-linux on Linux); `src/core/pty.ts` documents each difference it handles.
