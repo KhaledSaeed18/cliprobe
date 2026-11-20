@@ -1,0 +1,67 @@
+{
+    "skill_name": "cliprobe",
+    "fixtures": "Run `node skills/evals/cliprobe/make-fixtures.mjs <dir>` first and replace {fixtures} in each prompt with that directory. Afterwards, `node skills/evals/cliprobe/make-fixtures.mjs --verify <dir>` must report that every file is unchanged, except in eval 4, which asks for a fix.",
+    "evals": [
+        {
+            "id": 1,
+            "name": "find-bugs",
+            "prompt": "I wrote a small CLI in {fixtures}/notes-cli (the entry point is cli.js). Before I publish it, check how it behaves when its output is piped, in CI, and when someone presses Ctrl-C. Don't change any files, just tell me what's wrong.",
+            "expected_output": "cliprobe run on ./cli.js with probes for `watch` (keeps running) and `list {fixture}` (prints file names): 7 failures. closed-pipe fails for --version, --help, watch and list {fixture} (write EPIPE, exit 0 -> 1); color fails for --help (bold codes in a pipe); ctrl-c fails for watch (ignored Ctrl-C, still running 3 s later); control-chars fails for list {fixture} (escape sequences from file names reach the terminal). Each comes with its evidence and a proposed fix; no file is changed.",
+            "files": [],
+            "expectations": [
+                "Ran cliprobe (cliprobe, or npx cliprobe@^1.2) instead of testing by hand only",
+                "Named the program so that probes reach the script: ./cli.js as an executable, or every probe spelled with cli.js after node",
+                "Added a probe for the watch command, so ctrl-c and sigterm ran instead of being skipped",
+                "Added a probe with {fixture} for the list command, so control-chars ran",
+                "Reports the closed-pipe failure (EPIPE crash, exit 0 -> 1) for --version and --help",
+                "Reports the color failure for --help: color codes printed into a pipe",
+                "Reports that watch ignores Ctrl-C (ctrl-c fails)",
+                "Reports that list prints control characters from file names unescaped (control-chars fails)",
+                "Proposes a fix for each failure without applying it",
+                "Does not modify any file (make-fixtures.mjs --verify passes)"
+            ]
+        },
+        {
+            "id": 2,
+            "name": "confirm-fix",
+            "prompt": "{fixtures}/notes-cli-fixed is my fixed version of the notes CLI. Does it pass cliprobe now, including Ctrl-C and weird file names?",
+            "expected_output": "Yes: with probes for watch and list {fixture}, no check fails or warns (21 passed, 4 skipped). The skips are expected (ctrl-c and sigterm on list, which finishes at once; color and stdin on watch, which keeps running). No file is changed.",
+            "files": [],
+            "expectations": [
+                "Ran cliprobe with probes for watch and for list {fixture}",
+                "Reports no failures and no warnings",
+                "Explains the remaining skips instead of calling them problems",
+                "Does not modify any file (make-fixtures.mjs --verify passes)"
+            ]
+        },
+        {
+            "id": 3,
+            "name": "ci-step",
+            "prompt": "Give me a GitHub Actions step that fails the build when {fixtures}/notes-cli-fixed regresses on pipe, color or Ctrl-C handling. Show me the YAML; don't edit any files.",
+            "expected_output": "A step running `npx --yes cliprobe@1` (a pinned major version) with `--probe watch` and `--probe \"list {fixture}\"` on the CLI, optionally writing `--format markdown --output-file \"$GITHUB_STEP_SUMMARY\"` or JUnit XML. It explains that a failed check exits 1 and that `--strict` would also fail on warnings.",
+            "files": [],
+            "expectations": [
+                "Uses cliprobe pinned to major version 1 (cliprobe@1 or ^1.2), not @latest",
+                "Includes a probe for the watch command and one with {fixture}",
+                "Probes the CLI itself, not node with the probes as node's arguments",
+                "Explains that a failure exits 1 and fails the step",
+                "Does not add --strict without saying that warnings would then fail the build",
+                "Does not modify any file (make-fixtures.mjs --verify passes)"
+            ]
+        },
+        {
+            "id": 4,
+            "name": "fix-closed-pipe",
+            "prompt": "Fix the crash when the output of {fixtures}/notes-cli is piped into head, and show me that it's fixed.",
+            "expected_output": "An EPIPE handler on process.stdout near the top of cli.js that exits quietly, then a cliprobe run with --check closed-pipe showing the --version, --help and list probes pass. Nothing else in the program changes.",
+            "files": [],
+            "expectations": [
+                "Ran cliprobe --check closed-pipe (or a full run) before the fix and saw the failures",
+                "Added an EPIPE handler on process.stdout that exits quietly and rethrows other errors",
+                "Did not change the program's other behavior (color, Ctrl-C, list output)",
+                "Ran cliprobe again after the fix and showed closed-pipe passing",
+                "make-fixtures.mjs --verify reports notes-cli/cli.js as the only changed file"
+            ]
+        }
+    ]
+}

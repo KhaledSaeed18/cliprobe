@@ -93,6 +93,7 @@ The other checks cover the rest of what goes wrong between a program and the thi
 - [Stability](#stability)
 - [Checks](#checks): [closed-pipe](#closed-pipe), [color](#color), [pipe-escapes](#pipe-escapes), [stdin](#stdin), [ctrl-c](#ctrl-c), [sigterm](#sigterm), [restore](#restore), [control-chars](#control-chars), [info checks](#info-checks)
 - [Fixing a failure in a Node.js CLI](#fixing-a-failure-in-a-nodejs-cli)
+- [Agent skill](#agent-skill)
 - [Safety](#safety)
 - [FAQ](#faq)
 - [Contributing](#contributing)
@@ -417,6 +418,16 @@ const shown = name.replace(
 ```
 
 Also escape U+2028, U+2029 and the bidi controls (U+202A to U+202E, U+2066 to U+2069) if names may come from untrusted sources.
+
+## Agent skill
+
+An official [Agent Skill](https://agentskills.io) lets coding agents such as Claude Code, Codex, Gemini CLI and OpenCode use cliprobe on the CLIs they build or review: run every check with the right probes, report each failure with its evidence, propose the fix, and add a CI step. The agents run cliprobe and read its JSON report instead of guessing.
+
+```sh
+npx skills add KhaledSaeed18/cliprobe --skill cliprobe
+```
+
+Then ask in your own words, for example "check my CLI for pipe and Ctrl-C bugs before I publish it". See [skills/README.md](https://github.com/KhaledSaeed18/cliprobe/blob/main/skills/README.md) for other ways to install it and the evals.
 
 ## Safety
 

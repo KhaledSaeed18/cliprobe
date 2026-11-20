@@ -29,6 +29,7 @@
 - [ ] `src/cli/help.ts`: the check list, options and descriptions
 - [ ] `schema.json`: new `details` fields, or a new check's name and `details.<check>` entry
 - [ ] `README.md`: usage, options, the number of checks, check sections and verdict tables, "In CI", "Fixing a failure", "Safety"
+- [ ] `skills/cliprobe/`: the agent skill, for a new or renamed check or option
 - [ ] `AGENTS.md` and `CONTRIBUTING.md`: layout, commands, rules or workflow
 - [ ] `.github/ISSUE_TEMPLATE/wrong_verdict.yml`: the check list
 - [ ] Tests and fixtures: pass, warn, fail and skip cases, and real tools that must not fail
