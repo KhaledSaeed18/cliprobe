@@ -94,6 +94,7 @@ The other checks cover the rest of what goes wrong between a program and the thi
 - [Checks](#checks): [closed-pipe](#closed-pipe), [color](#color), [pipe-escapes](#pipe-escapes), [stdin](#stdin), [ctrl-c](#ctrl-c), [sigterm](#sigterm), [restore](#restore), [control-chars](#control-chars), [info checks](#info-checks)
 - [Fixing a failure in a Node.js CLI](#fixing-a-failure-in-a-nodejs-cli)
 - [Safety](#safety)
+- [FAQ](#faq)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -420,6 +421,22 @@ Also escape U+2028, U+2029 and the bidi controls (U+202A to U+202E, U+2066 to U+
 ## Safety
 
 cliprobe runs the target in your current directory without a shell, with stdin closed (`/dev/null`; the stdin, ctrl-c and sigterm checks use a pipe that they never write to), a temporary `HOME`, and a minimal environment (no tokens from your shell). It still executes the program, so only probe programs you trust. By default cliprobe passes only the arguments you give, after the command or with `--probe`, or `--version` and `--help`, or none with `--bare`; only the baseline check, when you name it, adds an unknown flag. The only input it ever sends is Ctrl-C, from the ctrl-c and restore checks, and SIGTERM, from the sigterm check, to probes you write. It kills each run's whole process group on timeout, including under a pseudo-terminal, and kills whatever a program leaves running in its group when it exits under the sigterm check. It runs on macOS and Linux, including Alpine; the terminal checks need the `script` command, which Alpine ships in `util-linux-misc`. Windows isn't supported yet.
+
+## FAQ
+
+**Why were ctrl-c, sigterm and control-chars skipped?** They need probes that a plain `--version` and `--help` run doesn't have: ctrl-c and sigterm need a command that keeps running, such as a server or a watcher, and control-chars needs one that prints file names from `{fixture}`. Add them with `--probe`, so one run covers every check: `npx cliprobe --probe "serve --port 0" --probe "list {fixture}" -- my-cli`.
+
+**My program works when I run it, so why does a check fail?** cliprobe sets up conditions that are rare by hand: stdout closed before the program starts, output into a pipe, stdin that nobody writes to, a minimal environment. Reproduce the failure the way the check's section shows, for example `my-cli --help | head -n 1` for closed-pipe or `my-cli --help | cat -v` for color, and read the evidence in `--json`. If you still believe the verdict is wrong, [open a wrong verdict issue](https://github.com/KhaledSaeed18/cliprobe/issues/new?template=wrong_verdict.yml).
+
+**Why does my program behave differently under cliprobe?** It runs without your shell's variables or your home directory: the environment has only `PATH`, `LANG`, `TERM`, `CI` and a temporary `HOME` and `TMPDIR`. A program that needs a token or a config file from your home directory sees neither, as on a fresh CI runner.
+
+**Does a pass mean my CLI has no terminal bugs?** No. Each check tests one behavior, on the probes that ran; a subcommand that wasn't probed wasn't checked. cliprobe reports evidence, not a score, so add a `--probe` for each command your users pipe or interrupt.
+
+**Does it only work for Node.js programs?** No. It tests any command as a black box, whatever it is written in. Only the [fixes](#fixing-a-failure-in-a-nodejs-cli) are specific to Node.js.
+
+**Is it safe to probe any program?** cliprobe runs the program with your privileges, so probing it is like running it. Probe untrusted programs inside a disposable container with networking off, for example `docker run --rm --network none`.
+
+**Does it run on Windows?** Not yet. It runs on macOS and Linux, including Alpine. It may work under WSL, but that isn't tested.
 
 ## Contributing
 
