@@ -150,7 +150,7 @@ npx cliprobe --strict --skip restore -- node ./dist/cli.js server   # warnings f
 | `1`  | A check failed, or warned with `--strict` |
 | `2`  | Usage error, or the command could not run |
 
-A command that isn't on `PATH` is reported once, before any check runs, with exit `2` and no report. That makes cliprobe usable as a CI gate.
+A command that can't run is reported once, before any check runs, with exit `2` and no report: one that isn't on `PATH`, a directory, a file without the execute bit (`chmod +x`), or a script whose `#!` interpreter is missing. A file this system can't execute at all, such as a binary built for another platform, makes every check say could-not-run (`ERROR`), so cliprobe exits `2` there too; on Linux, where `/bin/sh` tries such a file as a script, cliprobe recognizes the shell's complaint. That makes cliprobe usable as a CI gate.
 
 ## In CI
 

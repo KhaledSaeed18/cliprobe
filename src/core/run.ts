@@ -11,6 +11,7 @@ import {
 } from './group.ts';
 import { onInterrupt } from './interrupt.ts';
 import { sandbox } from './sandbox.ts';
+import { notAProgram, shellFallbackError } from './which.ts';
 
 const STDERR_CAP = 64 * 1024;
 const STDOUT_CAP = 1024 * 1024;
@@ -185,8 +186,7 @@ export function run(
                 detached: true,
             });
         } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            finish({ exitCode: null, signal: null, spawnError: message });
+            finish({ exitCode: null, signal: null, spawnError: spawnMessage(command, error) });
             return;
         }
         const proc = child;
@@ -268,7 +268,13 @@ export function run(
                 // Something the run could not see still holds the pipes: stop reading.
                 proc.stdout?.destroy();
                 proc.stderr?.destroy();
-                finish({ exitCode, signal: exitSignal });
+                // A file Linux can't execute was run by /bin/sh instead: it never started.
+                const notRun = timedOut ? undefined : shellFallbackError(command, exitCode, stderr);
+                finish({
+                    exitCode,
+                    signal: exitSignal,
+                    ...(notRun === undefined ? {} : { spawnError: notRun }),
+                });
             })();
         });
         proc.stdout?.on('data', (chunk: Buffer) => {
@@ -281,13 +287,21 @@ export function run(
         proc.on('error', (error) => {
             clearTimeout(timer);
             clearTimeout(signalTimer);
-            finish({ exitCode: null, signal: null, spawnError: error.message });
+            finish({ exitCode: null, signal: null, spawnError: spawnMessage(command, error) });
         });
         proc.on('close', () => {
             closed = true;
             onClosed?.();
         });
     });
+}
+
+/** Why spawn() failed; "spawn ENOEXEC" names neither the file nor the problem. */
+function spawnMessage(command: string, error: unknown): string {
+    if (!(error instanceof Error)) return String(error);
+    return 'code' in error && error.code === 'ENOEXEC'
+        ? notAProgram(command, 'exec format error')
+        : error.message;
 }
 
 /**

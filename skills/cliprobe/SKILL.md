@@ -90,7 +90,7 @@ A failed check exits 1, so the step fails. Pin the major version and include the
 
 ## 6. Troubleshooting
 
-- **Exit `2` and no report:** the command is not on `PATH`, or the arguments to cliprobe are wrong. Check the path after `--`; a relative path needs `./`.
+- **Exit `2` and no report:** the command can't run, or the arguments to cliprobe are wrong. The message says which: not found (check the path after `--`; a relative path needs `./`), a directory, not executable (`chmod +x`), or a missing `#!` interpreter.
 - **Everything `SKIP`ped in ctrl-c and sigterm:** no probe kept running for a second. Add a `--probe` for a watch or serve command.
 - **`control-chars` skipped:** no probe contained `{fixture}`, or the probe didn't print the names.
 - **`ERROR`:** the probe could not start or crashed before any check could judge it; the reason says why.
