@@ -30,7 +30,7 @@ export function formatHuman(
         if (checks.length > 1) lines.push(check);
         for (const r of results.filter((result) => result.check === check)) {
             lines.push(
-                `  ${paint(r.verdict)}  ${safe(shellJoin(r.invocation)).padEnd(width)}  ${r.reason}`
+                `  ${paint(r.verdict)}  ${safe(shellJoin(r.invocation)).padEnd(width)}  ${safe(r.reason)}`
             );
             if (r.evidence) {
                 lines.push(
