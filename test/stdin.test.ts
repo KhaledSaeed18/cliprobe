@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { judgeStdin, type StdinRuns } from '../src/checks/stdin.ts';
+import type { RunResult } from '../src/core/run.ts';
 import { first, fixture, probeJson, runCheck } from './helpers/cli.ts';
 
 const node = process.execPath;
@@ -38,6 +40,12 @@ describe("stdin: cliprobe's own --version and --help probes", () => {
             expect(r.details.waitedForStdin).toBe(true);
             expect(r.details.finishedAfterCloseMs).toBeLessThan(1500);
         }
+    });
+
+    it('passes a program that takes 3 to 4 s to answer but never reads stdin', async () => {
+        const { status, results: rs } = await results([fixture('stdin/slow-answer')]);
+        expect(status).toBe(0);
+        expect(rs.map((r) => r.verdict)).toEqual(['pass', 'pass']);
     });
 
     it('passes a program that answers --version and --help without reading stdin', async () => {
@@ -91,5 +99,65 @@ describe('stdin: real tools', () => {
         for (const tool of ['cat', 'grep']) {
             expect((await results([tool])).results.map((r) => r.verdict)).toEqual(['pass', 'pass']);
         }
+    });
+});
+
+describe('stdin: slow programs', () => {
+    it('still proves a slow program waits for stdin, with windows scaled to its time', async () => {
+        const [result] = await runCheck('stdin', [node, fixture('stdin/slow-reader')], 6000);
+        expect(result).toMatchObject({ verdict: 'skip', waitedForStdin: true });
+        expect(result?.reason).toMatch(/reads stdin like a filter/);
+        expect(result?.evidence).toMatch(/still running after 4(\.\d)? s with stdin open/);
+    });
+});
+
+describe('judgeStdin', () => {
+    const ran = (durationMs: number, timedOut = false): RunResult => ({
+        stdoutBytes: 0,
+        stdout: Buffer.alloc(0),
+        stderr: '',
+        timedOut,
+        exitCode: timedOut ? null : 0,
+        signal: timedOut ? 'SIGKILL' : null,
+        durationMs,
+    });
+
+    it('skips when --timeout leaves too little room to tell a slow program from a waiting one', () => {
+        const runs: StdinRuns = { closed: ran(2500), open: ran(5000, true), openMs: 5000 };
+        expect(judgeStdin(runs, true)).toMatchObject({
+            verdict: 'skip',
+            reason: expect.stringMatching(
+                /takes 2500 ms even with stdin closed.*raise --timeout/
+            ) as unknown,
+        });
+    });
+
+    it('does not blame stdin when the confirming run finished before the close', () => {
+        const runs: StdinRuns = {
+            closed: ran(100),
+            open: ran(3000, true),
+            openMs: 3000,
+            closing: ran(400),
+            closeAfterMs: 1200,
+        };
+        expect(judgeStdin(runs, true)).toMatchObject({
+            verdict: 'skip',
+            reason: expect.stringMatching(/finished before stdin was closed/) as unknown,
+        });
+    });
+
+    it('fails a default probe that finished only after the close, quoting the scaled times', () => {
+        const runs: StdinRuns = {
+            closed: ran(1500),
+            open: ran(4000, true),
+            openMs: 4000,
+            closing: ran(4100),
+            closeAfterMs: 4000,
+        };
+        expect(judgeStdin(runs, true)).toMatchObject({
+            verdict: 'fail',
+            evidence:
+                '1500 ms with stdin closed; still running after 4 s with stdin open; finished 100 ms after stdin closed',
+        });
     });
 });
