@@ -41,7 +41,7 @@ cliprobe runs programs and prints what they did, so the line between its own bug
 - **Output injection.** Text from a probed program reaching your terminal, or a CI system's renderer, unescaped. cliprobe escapes target text in every format: control characters in the human report, JSON escaping, Markdown code spans and XML in JUnit. A file name or output line that gets through, for example to move the cursor, change the window title or forge a passing result, is a vulnerability.
 - **Sandbox escapes.** cliprobe gives the program a minimal environment (`PATH`, `LANG`, `TERM`, `CI` and a temporary `HOME` and `TMPDIR`) and no shell. A variable from your shell, such as a token, reaching the program is a vulnerability.
 - **Unexpected input or arguments.** cliprobe passes only the arguments you give it, and the only input it sends is Ctrl-C or SIGTERM where a check needs it. Anything else it sends, writes or runs is a vulnerability.
-- **Processes left running.** cliprobe kills each run's process group on timeout. Processes surviving a finished cliprobe run because of cliprobe are a bug, and a security issue where they keep running with your privileges.
+- **Processes left running.** cliprobe kills each run's process group on timeout, kills whatever a program leaves running when it exits. Processes surviving a finished cliprobe run because of cliprobe are a bug, and a security issue where they keep running with your privileges.
 - **The release pipeline.** Anything that could let someone other than the maintainer publish a version of cliprobe to npm.
 
 **Out of scope:**

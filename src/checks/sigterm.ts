@@ -1,4 +1,5 @@
 import { crashEvidence, TRACE_RE } from '../core/evidence.ts';
+import type { GroupMember } from '../core/group.ts';
 import { run, type RunResult } from '../core/run.ts';
 import type { Check, Judgement, Result } from '../core/types.ts';
 
@@ -19,13 +20,26 @@ export interface SigtermResult extends Result {
     exitedAfterMs: number | null;
     exitCode: number | null;
     signal: NodeJS.Signals | null;
-    /** Command lines of the processes it left running after it exited. */
+    /** Command lines of the processes it left running after it exited, in its group or started by it. */
     leftRunning: string[];
     /** The end of what it printed to stderr after SIGTERM. */
     stderrAfter: string;
 }
 
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 'es'}`;
+
+/** "1 process" or "3 processes", and the evidence naming the first one, for a check that reports leftovers. */
+export function describeLeftovers(left: readonly GroupMember[]): {
+    count: string;
+    evidence: string;
+} {
+    const [first] = left;
+    const more = left.length > 1 ? ` (and ${left.length - 1} more)` : '';
+    return {
+        count: plural(left.length, 'process'),
+        evidence: `still running: ${first?.command ?? ''}${more}`,
+    };
+}
 
 export function judgeSigterm(r: RunResult): Judgement {
     if (r.spawnError) return { verdict: 'error', reason: `could not start: ${r.spawnError}` };
@@ -42,12 +56,12 @@ export function judgeSigterm(r: RunResult): Judgement {
         };
     }
     const left = r.leftRunning ?? [];
-    const [firstLeft] = left;
-    if (firstLeft) {
+    if (left.length > 0) {
+        const { count, evidence } = describeLeftovers(left);
         return {
             verdict: 'warn',
-            reason: `exited on SIGTERM but left ${plural(left.length, 'process')} running, which keep ports and files busy`,
-            evidence: `still running: ${firstLeft.command}${left.length > 1 ? ` (and ${left.length - 1} more)` : ''}`,
+            reason: `exited on SIGTERM but left ${count} running, which keep ports and files busy`,
+            evidence,
         };
     }
     const after = r.stderr.slice(r.stderrAtSignal ?? 0);

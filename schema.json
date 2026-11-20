@@ -495,7 +495,7 @@
                     "items": {
                         "type": "string"
                     },
-                    "description": "Command lines of the processes still running in its group after it exited."
+                    "description": "Command lines of the processes still running after it exited, in its group or started by it in another group or session."
                 },
                 "stderrAfter": {
                     "type": "string",

@@ -12,7 +12,7 @@ import {
     parsePs,
 } from '../src/core/group.ts';
 import type { RunResult } from '../src/core/run.ts';
-import { cliprobe, first, fixture, probeJson, runCheck } from './helpers/cli.ts';
+import { cliprobe, endsWith, first, fixture, probeJson, runCheck, running } from './helpers/cli.ts';
 
 const node = process.execPath;
 const only = { checks: ['sigterm'] };
@@ -47,6 +47,7 @@ describe('sigterm: fixtures', () => {
         ['ignores', 'warn', /ignored SIGTERM: still running 3 s later/],
         ['orphans', 'warn', /left 1 process running/],
         ['orphans-quiet', 'warn', /left 2 processes running/],
+        ['detached', 'warn', /left 1 process running/],
         ['throws', 'warn', /stack trace on SIGTERM/],
         ['quick', 'skip', /finished in \d+ ms, before SIGTERM/],
     ])('%s -> %s', async (name, verdict, reason) => {
@@ -64,14 +65,18 @@ describe('sigterm: fixtures', () => {
     });
 
     it('kills what the program left running', async () => {
-        // Only the fixtures' children, not shells that mention the marker.
-        const running = (): string[] =>
-            execFileSync('ps', ['-axo', 'args='], { encoding: 'utf8' })
-                .split('\n')
-                .filter((line) => line.startsWith(node) && line.endsWith('sigterm-orphan'));
         await probe(termFixture('orphans'));
         await probe(termFixture('orphans-quiet'));
-        expect(running()).toEqual([]);
+        // Only the fixtures' children, not shells that mention the marker.
+        expect(running((line) => line.startsWith(node) && line.endsWith('sigterm-orphan'))).toEqual(
+            []
+        );
+    });
+
+    it('finds and kills a child in its own session, which its group does not hold', async () => {
+        const { result } = await probe(termFixture('detached'));
+        expect(result.evidence).toMatch(/^still running: .*sigterm-detached$/);
+        expect(running(endsWith('sigterm-detached'))).toEqual([]);
     });
 
     it('quotes the error and the frame in the program as evidence', async () => {
@@ -120,6 +125,23 @@ describe('sigterm: real tools', () => {
         expect((await probe(command)).result.verdict).toBe('pass');
     });
 
+    const hasSetsid = (() => {
+        try {
+            execFileSync('sh', ['-c', 'command -v setsid'], { stdio: 'ignore' });
+            return true;
+        } catch {
+            return false;
+        }
+    })();
+
+    // macOS has no setsid(1).
+    it.skipIf(!hasSetsid)('a shell that starts a detached command leaves it running', async () => {
+        const { result } = await probe(['sh', '-c', 'setsid sleep 75 & sleep 30']);
+        expect(result.verdict).toBe('warn');
+        expect(result.details.leftRunning).toContain('sleep 75');
+        expect(running((line) => line === 'sleep 75')).toEqual([]);
+    });
+
     it('a shell that waits on its command leaves it running', async () => {
         const { result } = await probe(['sh', '-c', 'sleep 30; echo done']);
         expect(result.verdict).toBe('warn');
@@ -162,7 +184,9 @@ describe('group members', () => {
         expect(parseProcStat('42 (my (odd) name) S 1 42 42 0 -1')).toEqual({
             name: 'my (odd) name',
             state: 'S',
+            ppid: 1,
             pgid: 42,
+            start: '',
         });
     });
 
