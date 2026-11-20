@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -70,11 +70,24 @@ describe('the process table', () => {
         }
     });
 
+    // BusyBox ps (Alpine) has no lstart, so the ps path runs only where ps has it.
+    const psHasStart = (() => {
+        try {
+            execFileSync('ps', ['-p', String(process.pid), '-o', 'lstart='], { stdio: 'ignore' });
+            return true;
+        } catch {
+            return false;
+        }
+    })();
+
     it('sees a real child with its parent and group, at once and without blocking', async () => {
         const child = spawn('sleep', ['30'], { detached: true, stdio: 'ignore' });
         try {
             await new Promise((resolve) => child.once('spawn', resolve));
-            for (const table of [processTable(), await processTableAsync()]) {
+            const tables = [processTable(), await processTableAsync()];
+            // The ps path on every platform that has a full ps, Linux included.
+            if (psHasStart) tables.push(processTable('darwin'), await processTableAsync('darwin'));
+            for (const table of tables) {
                 const found = table.find((p) => p.pid === child.pid);
                 expect(found).toMatchObject({
                     ppid: process.pid,
@@ -86,6 +99,12 @@ describe('the process table', () => {
         } finally {
             child.kill('SIGKILL');
         }
+    });
+
+    it('gives an empty table when ps cannot run', async () => {
+        const missing = 'cliprobe-no-such-ps-xyz';
+        expect(processTable('darwin', missing)).toEqual([]);
+        expect(await processTableAsync('darwin', missing)).toEqual([]);
     });
 });
 

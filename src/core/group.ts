@@ -133,21 +133,31 @@ export function parsePsTable(out: string): ProcessInfo[] {
     return table.sort((a, b) => a.pid - b.pid);
 }
 
-/** A snapshot of every running process, read at once. */
-export function processTable(): ProcessInfo[] {
-    if (process.platform === 'linux') return tableFromProc();
+/**
+ * A snapshot of every running process, read at once: from /proc on Linux, from
+ * ps elsewhere. `platform` and `ps` are parameters so tests can take the ps path
+ * on Linux and see it fail.
+ */
+export function processTable(
+    platform: NodeJS.Platform = process.platform,
+    ps: string = 'ps'
+): ProcessInfo[] {
+    if (platform === 'linux') return tableFromProc();
     try {
-        return parsePsTable(execFileSync('ps', PS_ARGS, { encoding: 'utf8', env: PS_ENV }));
+        return parsePsTable(execFileSync(ps, PS_ARGS, { encoding: 'utf8', env: PS_ENV }));
     } catch {
         return [];
     }
 }
 
 /** processTable() without blocking: on macOS, ps takes a few milliseconds. */
-export function processTableAsync(): Promise<ProcessInfo[]> {
-    if (process.platform === 'linux') return Promise.resolve(tableFromProc());
+export function processTableAsync(
+    platform: NodeJS.Platform = process.platform,
+    ps: string = 'ps'
+): Promise<ProcessInfo[]> {
+    if (platform === 'linux') return Promise.resolve(tableFromProc());
     return new Promise((resolve) => {
-        execFile('ps', PS_ARGS, { encoding: 'utf8', env: PS_ENV }, (error, out) => {
+        execFile(ps, PS_ARGS, { encoding: 'utf8', env: PS_ENV }, (error, out) => {
             resolve(error ? [] : parsePsTable(out));
         });
     });
