@@ -1,5 +1,6 @@
 import { CHECKS, selectChecks } from '../checks/index.ts';
 import { collapseResults, createFixture, expandFixture, usesFixture } from '../core/fixture.ts';
+import { onInterrupt } from '../core/interrupt.ts';
 import { safe } from '../core/safe.ts';
 import { findCommand } from '../core/which.ts';
 import type { Probe, Result, Target } from '../core/types.ts';
@@ -81,6 +82,8 @@ export async function run(argv: readonly string[], io: CliIO): Promise<number> {
         ...opts.probes.map((args) => ({ args, own: true })),
     ];
     const fixture = probes.some((p) => usesFixture(p.args)) ? createFixture() : undefined;
+    // The hostile file names must not stay behind if cliprobe is interrupted.
+    const unregister = fixture && onInterrupt(() => fixture.cleanup());
     const results: Result[] = [];
     try {
         const target: Target = {
@@ -95,6 +98,7 @@ export async function run(argv: readonly string[], io: CliIO): Promise<number> {
             results.push(...(await check.run(target, ctx)));
         }
     } finally {
+        unregister?.();
         fixture?.cleanup();
     }
     // Report the placeholder, not a temporary path that no longer exists. Collapse

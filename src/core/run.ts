@@ -9,6 +9,7 @@ import {
     processTableAsync,
     ProcessTree,
 } from './group.ts';
+import { onInterrupt } from './interrupt.ts';
 import { sandbox } from './sandbox.ts';
 
 const STDERR_CAP = 64 * 1024;
@@ -147,11 +148,17 @@ export function run(
         const killRun = (): void => {
             if (tree) killAll(tree.running(processTable()), groups());
         };
+        // If cliprobe itself is stopped, nothing it started may outlive it.
+        const unregister = onInterrupt(() => {
+            killRun();
+            rmSync(dir, { recursive: true, force: true });
+        });
         // A failed spawn emits both "error" and "close"; clean up and resolve once.
         const finish = (outcome: Outcome): void => {
             if (finished) return;
             finished = true;
             clearInterval(pollTimer);
+            unregister();
             if (typeof stdoutFd === 'number') closeSync(stdoutFd);
             rmSync(dir, { recursive: true, force: true });
             const stdout = Buffer.concat(stdoutChunks).subarray(0, STDOUT_CAP);
