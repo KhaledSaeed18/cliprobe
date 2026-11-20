@@ -30,7 +30,8 @@ Checks:
                 prompts and skips if it reads stdin like a filter.
   ctrl-c        Sends Ctrl-C (SIGINT) after 1 s, with stdin left open as in a
                 terminal. Fails if the command is still running 3 s later or
-                prints a stack trace; warns if it exits 0. Skipped when the
+                prints a stack trace; warns if it exits 0, or exits and leaves
+                processes running that ignored the Ctrl-C. Skipped when the
                 command finishes first, so probe a command that keeps running
                 (a watcher, a server, a long task), e.g. with --probe "serve".
   sigterm       Sends SIGTERM to the command alone after 1 s, as kill, docker
