@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.0](https://github.com/KhaledSaeed18/cliprobe/compare/v1.2.1...v1.3.0) (2026-11-20)
+
+### Features
+
+* **skills:** add the official agent skill for testing CLIs ([8e2f5d6](https://github.com/KhaledSaeed18/cliprobe/commit/8e2f5d6dd113d5149493f0a951f87b3b6681e7d1))
+
 ## [1.2.1](https://github.com/KhaledSaeed18/cliprobe/compare/v1.2.0...v1.2.1) (2026-11-20)
 
 ## [1.2.0](https://github.com/KhaledSaeed18/cliprobe/compare/v1.1.1...v1.2.0) (2026-11-16)
