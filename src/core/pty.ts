@@ -197,8 +197,8 @@ export async function runPty(
             // An empty SHELL breaks util-linux script; BSD script ignores it.
             env: { TERM: 'xterm-256color', SHELL: '/bin/sh', ...env },
             // The program has its own session, so killing script's group misses it, and
-            // one that ignores SIGHUP would outlive script. Kill its group first.
-            beforeKill: () => killGroupFromPidFile(pidFile),
+            // one that ignores SIGHUP would outlive script. Its group is part of the run.
+            extraGroup: () => programGroup(pidFile),
         });
         return {
             output: cleanPtyOutput(result.stdout, support.flavor),
@@ -243,14 +243,5 @@ function programState(pidFile: string): 'starting' | 'running' | 'gone' {
         return 'running';
     } catch {
         return 'gone';
-    }
-}
-
-function killGroupFromPidFile(pidFile: string): void {
-    const pid = programGroup(pidFile);
-    try {
-        if (pid !== undefined) process.kill(-pid, 'SIGKILL');
-    } catch {
-        // Already gone; killing script's group still follows.
     }
 }

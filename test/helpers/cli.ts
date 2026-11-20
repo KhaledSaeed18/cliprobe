@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +12,26 @@ export const BIN: string = fileURLToPath(new URL('../../dist/cli.js', import.met
 
 export const fixture = (name: string): string =>
     fileURLToPath(new URL(`../fixtures/${name}.mjs`, import.meta.url));
+
+/**
+ * Command lines of the running processes that `match` accepts: lines such as
+ * `sleep 71`, or ending with a fixture child's marker comment. Zombies are left
+ * out, as cliprobe leaves them out.
+ */
+export function running(match: (args: string) => boolean): string[] {
+    return execFileSync('ps', ['-axo', 'stat=,args='], { encoding: 'utf8' })
+        .split('\n')
+        .map((line) => /^\s*(\S+)\s+(.*?)\s*$/.exec(line))
+        .filter((m): m is RegExpExecArray => m !== null && !(m[1] ?? '').startsWith('Z'))
+        .map((m) => m[2] ?? '')
+        .filter(match);
+}
+
+/** Whether a process's arguments end with `marker`. */
+export const endsWith =
+    (marker: string) =>
+    (args: string): boolean =>
+        args.endsWith(marker);
 
 export interface CliResult {
     status: number | null;

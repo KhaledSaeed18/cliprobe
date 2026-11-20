@@ -78,7 +78,7 @@ These rules decide whether a change can be merged. [AGENTS.md](AGENTS.md#product
 - **No false fails.** A new check, or a new way for an existing check to fail, starts as a warning. It may only fail after it has been calibrated against real tools and produced no false fails.
 - **A stable contract.** Within 1.x, a minor release never adds a fail. Check names, verdicts, options and exit codes don't change, and the JSON report only gains fields.
 - **Deterministic.** No timing races: a closed pipe is a FIFO closed before the program starts, Ctrl-C is a signal to the process group or a key typed into a pseudo-terminal with a fixed 80x24 window.
-- **Safe.** No shell, a detached process group that is killed on timeout, a minimal environment and a temporary `HOME`. The only input cliprobe sends is Ctrl-C or SIGTERM, and only where a check needs it.
+- **Safe.** No shell, a detached process group that is killed on timeout, whatever a program leaves running killed when it exits, a minimal environment and a temporary `HOME`. The only input cliprobe sends is Ctrl-C or SIGTERM, and only where a check needs it.
 - **Practise what we check.** Every piece of text that comes from the probed program is escaped before cliprobe prints it, in every output format.
 
 ## Making a change

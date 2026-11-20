@@ -1,6 +1,7 @@
+import { spawn } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { run } from '../src/core/run.ts';
-import { fixture } from './helpers/cli.ts';
+import { endsWith, fixture, running } from './helpers/cli.ts';
 
 const node = process.execPath;
 
@@ -43,17 +44,17 @@ describe('run', () => {
         }
     });
 
-    it('calls beforeKill on timeout', async () => {
-        let called = false;
+    it('kills the extra process group on timeout, as under a pseudo-terminal', async () => {
+        const other = spawn('sleep', ['30'], { detached: true, stdio: 'ignore' });
+        await new Promise((resolve) => other.once('spawn', resolve));
+        const gone = new Promise((resolve) => other.once('exit', (_, signal) => resolve(signal)));
         const r = await run(node, [fixture('hang-always')], {
             timeout: 300,
-            beforeKill: () => {
-                called = true;
-            },
+            extraGroup: () => other.pid,
         });
         expect(r.timedOut).toBe(true);
         expect(r.signal).toBe('SIGKILL');
-        expect(called).toBe(true);
+        expect(await gone).toBe('SIGKILL');
     });
 });
 
@@ -109,5 +110,46 @@ describe('run with a stdin mode', () => {
         const r = await run('printf', ['x'], { timeout: 5000, stdin: 'open' });
         expect(r.timedOut).toBe(false);
         expect(r.exitCode).toBe(0);
+    });
+});
+
+describe('run after the program exits', () => {
+    it('kills what it left running, in its group and in a session of its own', async () => {
+        const r = await run(node, [fixture('leaves-children')], { timeout: 10_000 });
+        expect(r.timedOut).toBe(false);
+        expect(r.exitCode).toBe(0);
+        expect(r.leftRunning?.map((m) => m.command.split(' // ')[1]).sort()).toEqual([
+            'run-detached',
+            'run-orphan',
+        ]);
+        expect(running(endsWith('run-orphan'))).toEqual([]);
+        expect(running(endsWith('run-detached'))).toEqual([]);
+    });
+
+    it('returns at the exit, not when a child that holds stdout is killed at the timeout', async () => {
+        const r = await run(node, [fixture('holds-stdout')], { timeout: 10_000 });
+        expect(r.timedOut).toBe(false);
+        expect(r.stdout.toString()).toBe('parent done\n');
+        expect(r.durationMs).toBeLessThan(2000);
+        expect(r.leftRunning).toHaveLength(1);
+        expect(running(endsWith('holds-stdout'))).toEqual([]);
+    });
+
+    it('lets a quick background job finish and keeps its output', async () => {
+        const r = await run('sh', ['-c', '(sleep 0.05; echo late) & echo early'], {
+            timeout: 5000,
+        });
+        expect(r.stdout.toString()).toBe('early\nlate\n');
+        expect(r.leftRunning).toEqual([]);
+    });
+
+    it('leaves no timer behind, so cliprobe exits as soon as it reports', async () => {
+        const timers = (): number =>
+            process.getActiveResourcesInfo().filter((r) => r === 'Timeout').length;
+        const before = timers();
+        // The pipes close only once the child is killed, after the exit: the slow path.
+        for (let i = 0; i < 3; i++) await run(node, [fixture('holds-stdout')], { timeout: 5000 });
+        // A timer of an earlier test may end meanwhile; a leak adds one per run.
+        expect(timers()).toBeLessThanOrEqual(before);
     });
 });
