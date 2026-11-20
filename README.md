@@ -425,7 +425,7 @@ cliprobe runs the target in your current directory without a shell, with stdin c
 
 Bug reports and pull requests are welcome. The most useful report is a verdict you believe is wrong: open a [wrong verdict issue](https://github.com/KhaledSaeed18/cliprobe/issues/new?template=wrong_verdict.yml) with the program, its version and the `--format json` report. For a bug in cliprobe itself, an idea for a new check or a gap in these docs, [choose an issue form](https://github.com/KhaledSaeed18/cliprobe/issues/new/choose).
 
-Development needs macOS or Linux, Node.js 22.12 or later and pnpm (the version is pinned in `package.json`):
+Development needs macOS or Linux, Node.js 22.18 or later and pnpm (the version is pinned in `package.json`):
 
 ```sh
 pnpm install
