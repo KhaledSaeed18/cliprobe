@@ -1,7 +1,7 @@
 import { findOpenModes, type OpenMode } from '../core/ansi.ts';
 import { ptySupport, runPty, type PtyResult } from '../core/pty.ts';
 import type { Check, Judgement, Result } from '../core/types.ts';
-import { findCommand } from '../core/which.ts';
+import { cannotExecute, findCommand, notAProgram } from '../core/which.ts';
 import { CTRL_C_DELAY_MS, CTRL_C_GRACE_MS } from './ctrl-c.ts';
 
 export interface RestoreResult extends Result {
@@ -17,6 +17,9 @@ function listLabels(modes: readonly OpenMode[]): string {
         ? (labels[0] ?? '')
         : `${labels.slice(0, -1).join(', ')} and ${labels.at(-1) ?? ''}`;
 }
+
+/** The PTY wrapper's own complaint when it can't exec the program. */
+const WRAPPER_EXEC_FAILED = /^sh: [^\n]*(cannot execute|exec format error)/i;
 
 /** What the Ctrl-C key sends to a terminal. */
 const CTRL_C_KEY = '\x03';
@@ -65,7 +68,18 @@ export async function restore(
         // mode, as full-screen programs and prompts do) gets it as a key, as it would.
         ...(interrupt ? { input: { data: CTRL_C_KEY, afterMs: CTRL_C_DELAY_MS } } : {}),
     });
-    const judgement = judgeRestore(r);
+    // Under a PTY, a file this system can't run is only the complaint of the shell
+    // that execs it ("sh: ./x: cannot execute binary file"), and BSD script reports
+    // its exit as 1, so either sign counts, on a file no shell would run.
+    const notRun =
+        r.spawnError === undefined &&
+        (r.exitCode === 126 || r.exitCode === 127 || WRAPPER_EXEC_FAILED.test(r.output)) &&
+        cannotExecute(command);
+    const judgement = judgeRestore(
+        notRun
+            ? { ...r, spawnError: notAProgram(command, "the terminal's shell could not exec it") }
+            : r
+    );
     return {
         check: 'restore',
         invocation: [command, ...args],
