@@ -270,14 +270,14 @@ A carriage-return redraw only warns because some tools draw a progress meter on 
 
 ### stdin
 
-Agents and CI runners often start a command with stdin as a pipe that stays open and never receives anything. A program that reads stdin, or asks a question, then waits forever. cliprobe runs the command three ways: with stdin closed (`/dev/null`), with an open pipe, and, if that hangs for 3 seconds, with a pipe it closes after 1 second. Finishing right after the close proves stdin was the cause. Results:
+Agents and CI runners often start a command with stdin as a pipe that stays open and never receives anything. A program that reads stdin, or asks a question, then waits forever. cliprobe runs the command three ways: with stdin closed (`/dev/null`), with an open pipe, and, if that hangs, with a pipe it closes partway through. Finishing only after the close proves stdin was the cause. The open pipe gets 3 seconds, or twice the time the command took with stdin closed plus 1 second if that is longer, so a program that is just slow to answer isn't mistaken for one that waits. The pipe in the third run is closed after 1 second, or after that longer time for a slow command. Each run still stops at `--timeout`. Results:
 
-| Verdict | Meaning                                                                                                                   |
-| ------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `PASS`  | Finished without waiting for stdin                                                                                        |
-| `FAIL`  | `--version` or `--help` waited for stdin before answering: they must never need input                                     |
-| `WARN`  | A probe you wrote printed an unfinished line, like a question, then waited: it prompts even though stdin isn't a terminal |
-| `SKIP`  | A probe you wrote waited silently, like a filter (`grep pattern`), or the hang wasn't caused by stdin                     |
+| Verdict | Meaning                                                                                                                                                |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PASS`  | Finished without waiting for stdin                                                                                                                     |
+| `FAIL`  | `--version` or `--help` waited for stdin before answering: they must never need input                                                                  |
+| `WARN`  | A probe you wrote printed an unfinished line, like a question, then waited: it prompts even though stdin isn't a terminal                              |
+| `SKIP`  | A probe you wrote waited silently, like a filter (`grep pattern`), the hang wasn't caused by stdin, or the command is too slow for `--timeout` to tell |
 
 In the census of the top 100 npm CLIs, 9 of 238 `--help` and `--version` runs failed, each confirmed by hand. he, cssesc and ansi-html read stdin before looking at their arguments. webpack and webpack-dev-server, when webpack-cli is missing, ask whether to install it and wait for an answer without checking for a terminal. With no arguments, 17 tools waited on stdin as filters by design, which is why probes you write never fail this check.
 

@@ -3,11 +3,18 @@ import { isLongRunning, markLongRunning } from '../core/long-running.ts';
 import { run, type RunResult } from '../core/run.ts';
 import type { Check, Context, Judgement, Result } from '../core/types.ts';
 
-/** How long the program gets with stdin left open before it counts as waiting. */
+/** The least time the program gets with stdin left open before it counts as waiting. */
 export const STDIN_WAIT_MS = 3000;
-/** When the confirming run closes stdin, and how long it then gets to finish. */
+/** The earliest the confirming run closes stdin, and the least time it then gets to finish. */
 export const STDIN_CLOSE_AFTER_MS = 1000;
 const STDIN_GRACE_MS = 3000;
+
+/**
+ * How long a run must go past the one with stdin closed before stdin can be
+ * blamed: twice that time and a second more, so a program that is merely slow
+ * (3 to 4 s to answer) finishes well within it.
+ */
+export const stdinMargin = (closedMs: number): number => 2 * closedMs + 1000;
 
 /** The runs behind one verdict; later runs are left out once the verdict is settled. */
 export interface StdinRuns {
@@ -15,9 +22,33 @@ export interface StdinRuns {
     closed: RunResult;
     /** stdin is a pipe nobody writes to and that stays open. */
     open?: RunResult;
-    /** stdin is a pipe closed after STDIN_CLOSE_AFTER_MS: proves stdin was the cause. */
+    /** How long the open run was allowed: STDIN_WAIT_MS, or longer for a slow program. */
+    openMs?: number;
+    /** stdin is a pipe closed after `closeAfterMs`: proves stdin was the cause. */
     closing?: RunResult;
+    /** When the confirming run closed stdin: STDIN_CLOSE_AFTER_MS, or later for a slow program. */
+    closeAfterMs?: number;
 }
+
+/**
+ * Whether the runs prove the program waited for stdin: it hung with stdin open
+ * for well past the time it needed with stdin closed, and in the confirming run
+ * it finished after stdin was closed, not before.
+ */
+export function provenByClose(runs: StdinRuns): boolean {
+    const { closed, open, closing } = runs;
+    const openMs = runs.openMs ?? STDIN_WAIT_MS;
+    const closeAfterMs = runs.closeAfterMs ?? STDIN_CLOSE_AFTER_MS;
+    return (
+        open?.timedOut === true &&
+        openMs >= stdinMargin(closed.durationMs) &&
+        closing !== undefined &&
+        !closing.timedOut &&
+        closing.durationMs >= closeAfterMs
+    );
+}
+
+const seconds = (ms: number): string => `${Math.round(ms / 100) / 10} s`;
 
 export interface StdinResult extends Result {
     closedMs: number | null;
@@ -54,13 +85,27 @@ export function judgeStdin(runs: StdinRuns, defaultProbe: boolean): Judgement {
     if (!open || !open.timedOut) {
         return { verdict: 'pass', reason: 'finished without waiting for stdin' };
     }
+    const openMs = runs.openMs ?? STDIN_WAIT_MS;
+    const closeAfterMs = runs.closeAfterMs ?? STDIN_CLOSE_AFTER_MS;
+    if (openMs < stdinMargin(closed.durationMs)) {
+        return {
+            verdict: 'skip',
+            reason: `takes ${closed.durationMs} ms even with stdin closed, too close to --timeout to tell whether an open stdin makes it wait; raise --timeout`,
+        };
+    }
     if (!closing || closing.timedOut) {
         return {
             verdict: 'skip',
             reason: "hung with stdin open, but closing stdin didn't end it, so the cause isn't proven",
         };
     }
-    const evidence = `${closed.durationMs} ms with stdin closed; still running after ${STDIN_WAIT_MS / 1000} s with stdin open; finished ${closing.durationMs - STDIN_CLOSE_AFTER_MS} ms after stdin closed`;
+    if (!provenByClose(runs)) {
+        return {
+            verdict: 'skip',
+            reason: "hung once with stdin open, but finished before stdin was closed the next time, so the cause isn't proven",
+        };
+    }
+    const evidence = `${closed.durationMs} ms with stdin closed; still running after ${seconds(openMs)} with stdin open; finished ${closing.durationMs - closeAfterMs} ms after stdin closed`;
     if (defaultProbe) {
         return {
             verdict: 'fail',
@@ -91,13 +136,20 @@ async function stdinRuns(
     const closed = await run(command, args, { timeout });
     if (closed.timedOut) return { closed };
     if (closed.spawnError) return { closed };
-    const open = await run(command, args, { timeout: STDIN_WAIT_MS, stdin: 'open' });
-    if (!open.timedOut) return { closed, open };
+    // A slow program gets as long as it needs, with room to spare, before an open
+    // stdin is blamed; the probe timeout still bounds each run.
+    const margin = stdinMargin(closed.durationMs);
+    const openMs = Math.min(timeout, Math.max(STDIN_WAIT_MS, margin));
+    const open = await run(command, args, { timeout: openMs, stdin: 'open' });
+    if (!open.timedOut || openMs < margin) return { closed, open, openMs };
+    // Closed only after the time it needs anyway, so finishing after the close shows
+    // the close was what it waited for, not the end of its own work.
+    const closeAfterMs = Math.max(STDIN_CLOSE_AFTER_MS, margin);
     const closing = await run(command, args, {
-        timeout: STDIN_CLOSE_AFTER_MS + STDIN_GRACE_MS,
-        stdin: { closeAfterMs: STDIN_CLOSE_AFTER_MS },
+        timeout: closeAfterMs + Math.max(STDIN_GRACE_MS, margin),
+        stdin: { closeAfterMs },
     });
-    return { closed, open, closing };
+    return { closed, open, openMs, closing, closeAfterMs };
 }
 
 export async function stdinCheck(
@@ -120,8 +172,7 @@ export async function stdinCheck(
     }
     const runs = await stdinRuns(command, args, ctx.timeout);
     if (runs.closed.timedOut) markLongRunning(ctx, command, args);
-    const proven =
-        runs.open?.timedOut === true && runs.closing !== undefined && !runs.closing.timedOut;
+    const proven = provenByClose(runs);
     return {
         check: 'stdin',
         invocation: [command, ...args],
@@ -129,7 +180,9 @@ export async function stdinCheck(
         closedMs: runs.closed.spawnError ? null : runs.closed.durationMs,
         waitedForStdin: proven,
         finishedAfterCloseMs:
-            proven && runs.closing ? runs.closing.durationMs - STDIN_CLOSE_AFTER_MS : null,
+            proven && runs.closing
+                ? runs.closing.durationMs - (runs.closeAfterMs ?? STDIN_CLOSE_AFTER_MS)
+                : null,
     };
 }
 
