@@ -79,6 +79,13 @@ type Outcome = Pick<RunResult, 'exitCode' | 'signal' | 'spawnError'>;
 
 /** How long what a program left running gets to finish on its own, by default. */
 export const AFTER_EXIT_GRACE_MS = 250;
+
+/**
+ * The longest delay setTimeout takes (2^31 - 1 ms, about 24.8 days). Node turns
+ * anything longer into 1 ms, which would kill every probe at once.
+ */
+export const MAX_TIMEOUT_MS: number = 2 ** 31 - 1;
+
 /** How often the process table is read while the program runs, to learn its descendants. */
 const TREE_POLL_MS = 200;
 /** How long to wait for the output pipes to close once everything the run started is gone. */
@@ -208,11 +215,15 @@ export function run(
         const recordTree = (): void => {
             tree?.record(processTable());
         };
-        const timer = setTimeout(() => {
-            timedOut = true;
-            recordTree();
-            killRun();
-        }, timeout);
+        const timer = setTimeout(
+            () => {
+                timedOut = true;
+                recordTree();
+                killRun();
+                // A check may add a margin to --timeout; that must not overflow to 1 ms.
+            },
+            Math.min(timeout, MAX_TIMEOUT_MS)
+        );
         const signalTimer =
             signal &&
             setTimeout(() => {

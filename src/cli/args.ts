@@ -1,4 +1,5 @@
 import { shellJoin, shellSplit } from '../core/quote.ts';
+import { MAX_TIMEOUT_MS } from '../core/run.ts';
 import { type Format, FORMAT_NAMES, isFormat } from '../report/index.ts';
 
 export class UsageError extends Error {}
@@ -66,9 +67,14 @@ export function parseArgs(argv: readonly string[]): Options {
         else if (a === '--timeout' || a.startsWith('--timeout=')) {
             const value = a.includes('=') ? a.slice(a.indexOf('=') + 1) : argv[++i];
             opts.timeout = Number(value);
-            if (!Number.isInteger(opts.timeout) || opts.timeout <= 0) {
+            // Number() keeps forms such as 1e3 working; the cap is what setTimeout takes.
+            if (
+                !Number.isInteger(opts.timeout) ||
+                opts.timeout <= 0 ||
+                opts.timeout > MAX_TIMEOUT_MS
+            ) {
                 throw new UsageError(
-                    `--timeout needs a positive whole number of milliseconds, got "${String(value)}"`
+                    `--timeout needs a whole number of milliseconds from 1 to ${MAX_TIMEOUT_MS} (about 24 days), got "${String(value)}"`
                 );
             }
         } else if (a === '--probe' || a.startsWith('--probe=')) {
