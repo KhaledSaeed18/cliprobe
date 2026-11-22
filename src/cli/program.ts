@@ -5,7 +5,7 @@ import { safe } from '../core/safe.ts';
 import { commandProblem } from '../core/which.ts';
 import type { Probe, Result, Target } from '../core/types.ts';
 import { FORMATS, type Report } from '../report/index.ts';
-import { writeReportFile } from '../report/write.ts';
+import { reportPathProblem, writeReportFile } from '../report/write.ts';
 import { VERSION } from '../version.ts';
 import { mainProbe, parseArgs, UsageError } from './args.ts';
 import { HELP } from './help.ts';
@@ -76,6 +76,15 @@ export async function run(argv: readonly string[], io: CliIO): Promise<number> {
         err(`cliprobe: ${safe(problem)}\n`);
         return 2;
     }
+    // A report path that can't be written would throw away every result at the end.
+    const pathProblem =
+        opts.outputFile === undefined ? undefined : reportPathProblem(opts.outputFile);
+    if (pathProblem !== undefined) {
+        err(
+            `cliprobe: cannot write the report to ${safe(opts.outputFile ?? '')}: ${safe(pathProblem)}\n`
+        );
+        return 2;
+    }
 
     const own = opts.bare || opts.args.length > 0;
     const probes: Probe[] = [
@@ -113,14 +122,18 @@ export async function run(argv: readonly string[], io: CliIO): Promise<number> {
     };
     const { color } = io;
     if (opts.outputFile) {
+        let failure: string | undefined;
         try {
             await writeReportFile(opts.outputFile, FORMATS[opts.format](report, { color: false }));
         } catch (error) {
-            const reason = error instanceof Error ? error.message : String(error);
-            err(`cliprobe: could not write ${safe(opts.outputFile)}: ${safe(reason)}\n`);
+            failure = error instanceof Error ? error.message : String(error);
+        }
+        // The results still reach the log when the file can't take them.
+        out(FORMATS.human(report, { color }));
+        if (failure !== undefined) {
+            err(`cliprobe: could not write ${safe(opts.outputFile)}: ${safe(failure)}\n`);
             return 2;
         }
-        out(FORMATS.human(report, { color }));
     } else {
         out(FORMATS[opts.format](report, { color }));
     }

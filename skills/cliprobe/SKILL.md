@@ -41,7 +41,7 @@ The examples below write `cliprobe` for whichever command worked. Inside the cli
   - A script run through `node`: the command is `node`, so give the script in every probe: `cliprobe --probe "./dist/cli.js --version" --probe "./dist/cli.js watch" -- node ./dist/cli.js --help`. `cliprobe -- node ./dist/cli.js` alone probes only `node ./dist/cli.js`, and `--probe watch` would run `node watch`.
 - **Cover every check in one run.** By default cliprobe probes `--version` and `--help`. Three checks need more: `ctrl-c` and `sigterm` need a command that keeps running (a server, a watcher: `--probe "serve --port 0"`, `--probe watch`), and `control-chars` needs a command that prints file names from `{fixture}`, a directory of hostile names cliprobe creates (`--probe "list {fixture}"`). A `SKIP` says which probe was missing.
 - **Use `--json` for facts and the human report for people.** The JSON has `summary` (a count per verdict) and `results[]` with `check`, `invocation`, `verdict`, `reason`, `evidence` and `details`. See [references/json-report.md](references/json-report.md).
-- **Read the exit code.** `0` no check failed, `1` a check failed (or warned, with `--strict`), `2` a usage error or a command that could not run.
+- **Read the exit code.** `0` no check failed, `1` a check failed (or warned, with `--strict`), `2` a usage error, a command that could not run, or a report file that could not be written.
 - **`FAIL` and `WARN` are different.** A fail is a confirmed bug. A warn is a new or uncertain finding, which never fails a build without `--strict`. Report both, and say which is which.
 - **Don't fix the program on your own.** Report findings with their evidence and the fix you propose; change code only when the user asks.
 
@@ -90,7 +90,7 @@ A failed check exits 1, so the step fails. Pin the major version and include the
 
 ## 6. Troubleshooting
 
-- **Exit `2` and no report:** the command can't run, or the arguments to cliprobe are wrong. The message says which: not found (check the path after `--`; a relative path needs `./`), a directory, not executable (`chmod +x`), or a missing `#!` interpreter.
+- **Exit `2` and no report:** the command can't run, or the arguments to cliprobe are wrong. The message says which: not found (check the path after `--`; a relative path needs `./`), a directory, not executable (`chmod +x`), or a missing `#!` interpreter. An `--output-file` path that can't be written (a directory, a folder without write permission) also stops it up front.
 - **Everything `SKIP`ped in ctrl-c and sigterm:** no probe kept running for a second. Add a `--probe` for a watch or serve command.
 - **`control-chars` skipped:** no probe contained `{fixture}`, or the probe didn't print the names.
 - **`ERROR`:** the probe could not start or crashed before any check could judge it; the reason says why.

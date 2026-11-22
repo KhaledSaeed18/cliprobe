@@ -4,6 +4,7 @@ import {
     closeSync,
     existsSync,
     lstatSync,
+    mkdirSync,
     mkdtempSync,
     openSync,
     readdirSync,
@@ -242,9 +243,10 @@ describe('cliprobe --output-file', () => {
         expect(text).not.toMatch(/cliprobe-fixture-/);
     });
 
-    it('exits 2 with a message when the file cannot be written', async () => {
+    it('exits 2 before running any probe when the path cannot be written', async () => {
         const blocker = join(scratch, 'not-a-dir');
         writeFileSync(blocker, '');
+        const started = performance.now();
         const r = await cliprobe([
             '-o',
             join(blocker, 'report.json'),
@@ -253,11 +255,49 @@ describe('cliprobe --output-file', () => {
             '--check',
             'closed-pipe',
             '--',
-            'printf',
-            'x',
+            'sleep',
+            '3',
+        ]);
+        expect(performance.now() - started).toBeLessThan(2000);
+        expect(r.status).toBe(2);
+        expect(r.stdout).toBe('');
+        expect(r.stderr).toBe(
+            `cliprobe: cannot write the report to ${join(blocker, 'report.json')}: ${blocker} is not a folder\n`
+        );
+        expect(existsSync(join(blocker, 'report.json'))).toBe(false);
+    });
+
+    it('exits 2 up front when the path is a directory', async () => {
+        const r = await cliprobe(['-o', scratch, '--check', 'closed-pipe', '--', 'sleep', '3']);
+        expect(r.status).toBe(2);
+        expect(r.stderr).toMatch(/^cliprobe: cannot write the report to .*: is a directory\n$/);
+    });
+
+    it('escapes control characters in the path it names', async () => {
+        const path = join(scratch, `evil${String.fromCharCode(0x1b)}[2J`);
+        mkdirSync(path, { recursive: true });
+        const r = await cliprobe(['-o', path, '--check', 'closed-pipe', '--', 'printf', 'x']);
+        expect(r.status).toBe(2);
+        expect(r.stderr).toContain('evil\\x1b[2J: is a directory');
+        expect(r.stderr).not.toContain(String.fromCharCode(0x1b));
+    });
+
+    it('prints the human report before the error when the write still fails at the end', async () => {
+        // The probe itself turns the path into a directory, after the check up front.
+        const path = join(scratch, 'becomes-a-dir');
+        const r = await cliprobe([
+            '--json',
+            '-o',
+            path,
+            '--check',
+            'closed-pipe',
+            '--',
+            'mkdir',
+            path,
         ]);
         expect(r.status).toBe(2);
-        expect(r.stderr).toMatch(/^cliprobe: could not write .*not-a-dir\/report\.json: /);
-        expect(existsSync(join(blocker, 'report.json'))).toBe(false);
+        expect(r.stdout).toMatch(/^cliprobe .*closed-pipe check for mkdir\n\n {2}SKIP /);
+        expect(r.stdout).toMatch(/0 failed, 0 warned, 0 passed, 1 skipped\n$/);
+        expect(r.stderr).toBe(`cliprobe: could not write ${path}: is a directory\n`);
     });
 });
