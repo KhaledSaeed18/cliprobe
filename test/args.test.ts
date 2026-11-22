@@ -117,3 +117,31 @@ describe('parseArgs --bare', () => {
         expect(() => parseArgs(['--bare', '--', 'node', 'x.js'])).toThrow(/no arguments/);
     });
 });
+
+describe('parseArgs --timeout', () => {
+    it('defaults to 15000 and takes the next argument or the value after =', () => {
+        expect(parseArgs(['node']).timeout).toBe(15000);
+        expect(parseArgs(['--timeout', '3000', 'node']).timeout).toBe(3000);
+        expect(parseArgs(['--timeout=3000', 'node']).timeout).toBe(3000);
+    });
+
+    it('keeps accepting every whole number it accepted before, such as 1e3', () => {
+        expect(parseArgs(['--timeout', '1e3', 'node']).timeout).toBe(1000);
+        expect(parseArgs(['--timeout', '2147483647', 'node']).timeout).toBe(2147483647);
+    });
+
+    it('rejects values setTimeout would overflow to 1 ms', () => {
+        for (const value of ['2147483648', '99999999999999', '1e10']) {
+            expect(() => parseArgs(['--timeout', value, 'node'])).toThrow(
+                /--timeout needs a whole number of milliseconds from 1 to 2147483647 \(about 24 days\), got "/
+            );
+        }
+    });
+
+    it('rejects zero, negative, fractional and non-numeric values', () => {
+        for (const value of ['0', '1.5', 'abc', '--timeout=-5']) {
+            const argv = value.startsWith('--') ? [value, 'node'] : ['--timeout', value, 'node'];
+            expect(() => parseArgs(argv)).toThrow(UsageError);
+        }
+    });
+});

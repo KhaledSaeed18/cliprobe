@@ -1,11 +1,27 @@
 import { spawn } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
-import { run } from '../src/core/run.ts';
+import { MAX_TIMEOUT_MS, run } from '../src/core/run.ts';
 import { endsWith, fixture, running } from './helpers/cli.ts';
 
 const node = process.execPath;
 
 describe('run', () => {
+    it('never lets a timeout longer than setTimeout takes overflow to 1 ms', async () => {
+        const warnings: string[] = [];
+        const onWarning = (w: Error): void => {
+            warnings.push(w.name);
+        };
+        process.on('warning', onWarning);
+        try {
+            const r = await run('sleep', ['0.3'], { timeout: MAX_TIMEOUT_MS * 2 });
+            expect(r.timedOut).toBe(false);
+            expect(r.exitCode).toBe(0);
+        } finally {
+            process.off('warning', onWarning);
+        }
+        expect(warnings).not.toContain('TimeoutOverflowWarning');
+    });
+
     it('captures stdout', async () => {
         const r = await run('printf', ['a\\nb\\n'], { timeout: 5000 });
         expect(r.stdout.toString()).toBe('a\nb\n');

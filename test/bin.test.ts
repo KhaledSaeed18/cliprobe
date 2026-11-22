@@ -29,6 +29,24 @@ describe('the built cliprobe', () => {
         expect(cliprobeBin(['--bogus']).status).toBe(2);
     });
 
+    it('rejects a --timeout that setTimeout would overflow, before running anything', () => {
+        const r = cliprobeBin([
+            '--timeout',
+            '2147483648',
+            '--check',
+            'closed-pipe',
+            '--',
+            'sleep',
+            '3',
+        ]);
+        expect(r.status).toBe(2);
+        expect(r.stderr).toMatch(
+            /^cliprobe: --timeout needs a whole number of milliseconds from 1 to 2147483647/
+        );
+        expect(r.stderr).not.toContain('TimeoutOverflowWarning');
+        expect(r.stdout).toBe('');
+    });
+
     it('probes each --probe after the defaults, in one report', () => {
         const r = cliprobeBin([
             '--check',
