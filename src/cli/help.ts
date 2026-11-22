@@ -75,8 +75,7 @@ Options:
                      Write the --format report to a file (replaced atomically,
                      keeping its mode, with parent folders created; a FIFO or
                      /dev/stdout is written in place); the human report still
-                     prints.
-                     For a path that starts with -, use -o=<path> or ./<path>
+                     prints. For a path that starts with -, use -o=<path>
   --timeout <ms>     Kill a probe after this long (default 15000, at most
                      2147483647, about 24 days). A command still running then
                      (a server, a watcher) is judged on what it did so far,
