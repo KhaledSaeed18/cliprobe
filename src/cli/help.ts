@@ -73,7 +73,8 @@ Options:
   --json             Same as --format json
   -o, --output-file <path>
                      Write the --format report to a file (created atomically,
-                     with parent folders); the human report still prints
+                     with parent folders); the human report still prints.
+                     For a path that starts with -, use -o=<path> or ./<path>
   --timeout <ms>     Kill a probe after this long (default 15000, at most
                      2147483647, about 24 days). A command still running then
                      (a server, a watcher) is judged on what it did so far,

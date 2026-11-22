@@ -128,19 +128,21 @@ npx cliprobe --check startup,baseline -- node ./dist/cli.js   # info checks, onl
 npx cliprobe --strict --skip restore -- node ./dist/cli.js server   # warnings fail too, except restore's
 ```
 
-| Option                       | Meaning                                                                                                                                       |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--bare`                     | Probe the command with no arguments instead of `--version` and `--help`, as a probe you wrote                                                 |
-| `--probe <args>`             | Also probe `<command> <args>`; repeat it for several. Split like a shell command line (quotes and backslashes, no variables or wildcards)     |
-| `--check <name>`             | Run only this check; repeat it or use commas for several                                                                                      |
-| `--skip <name>`              | Leave this check out; repeat it or use commas for several                                                                                     |
-| `--strict`                   | Exit 1 on a warning too, not only on a failure                                                                                                |
-| `--format <name>`            | Output format: `human` (default), `json`, `markdown` (a GitHub job summary or PR comment) or `junit` (XML for CI test reports)                |
-| `--json`                     | Same as `--format json`                                                                                                                       |
-| `-o`, `--output-file <path>` | Write the `--format` report to a file (atomically, creating parent folders); the human report still prints                                    |
-| `--timeout <ms>`             | Kill a probe after this long (default 15000, at most 2147483647, about 24 days); a command still running then is judged on what it did so far |
-| `-h`, `--help`               | Show help                                                                                                                                     |
-| `-v`, `--version`            | Show the version                                                                                                                              |
+| Option                       | Meaning                                                                                                                                                                      |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--bare`                     | Probe the command with no arguments instead of `--version` and `--help`, as a probe you wrote                                                                                |
+| `--probe <args>`             | Also probe `<command> <args>`; repeat it for several. Split like a shell command line (quotes and backslashes, no variables or wildcards)                                    |
+| `--check <name>`             | Run only this check; repeat it or use commas for several                                                                                                                     |
+| `--skip <name>`              | Leave this check out; repeat it or use commas for several                                                                                                                    |
+| `--strict`                   | Exit 1 on a warning too, not only on a failure                                                                                                                               |
+| `--format <name>`            | Output format: `human` (default), `json`, `markdown` (a GitHub job summary or PR comment) or `junit` (XML for CI test reports)                                               |
+| `--json`                     | Same as `--format json`                                                                                                                                                      |
+| `-o`, `--output-file <path>` | Write the `--format` report to a file (atomically, creating parent folders); the human report still prints. For a path that starts with `-`, write `-o=<path>` or `./<path>` |
+| `--timeout <ms>`             | Kill a probe after this long (default 15000, at most 2147483647, about 24 days); a command still running then is judged on what it did so far                                |
+| `-h`, `--help`               | Show help                                                                                                                                                                    |
+| `-v`, `--version`            | Show the version                                                                                                                                                             |
+
+An option's value follows it or comes after `=` (`--format=json`). A value that is another option, as in `-o --strict`, is a usage error rather than a file named `--strict`. `--probe` is the exception: its value may start with `-`, to probe a flag (`--probe --json`).
 
 ## Exit codes
 

@@ -26,6 +26,29 @@ export interface Options {
     probes: string[][];
 }
 
+/** Every option cliprobe takes, to tell a forgotten value from a value that starts with -. */
+const OPTIONS: ReadonlySet<string> = new Set([
+    '--json',
+    '--bare',
+    '--strict',
+    '-o',
+    '--output-file',
+    '--format',
+    '-h',
+    '--help',
+    '-v',
+    '--version',
+    '--timeout',
+    '--probe',
+    '--check',
+    '--skip',
+]);
+/** Options whose value is a path, which ./ can make start with something other than -. */
+const PATH_OPTIONS: ReadonlySet<string> = new Set(['-o', '--output-file']);
+
+/** The option name in an argument such as --format=json. */
+const flagOf = (arg: string): string => arg.split('=')[0] ?? arg;
+
 export function parseArgs(argv: readonly string[]): Options {
     const opts: Options = {
         format: 'human',
@@ -47,26 +70,39 @@ export function parseArgs(argv: readonly string[]): Options {
             [opts.command, ...opts.args] = argv.slice(i + 1);
             break;
         }
+        /** The value of the option `a`: after its `=`, or the next argument, which must not be another option. */
+        const value = (what: string): string => {
+            const flag = flagOf(a);
+            const inline = a.includes('=');
+            const v = inline ? a.slice(a.indexOf('=') + 1) : argv[++i];
+            if (v === undefined || v === '') throw new UsageError(`${flag} needs ${what}`);
+            if (!inline && v.startsWith('-')) {
+                // A forgotten value would silently swallow the next option (-o --strict).
+                const hint =
+                    PATH_OPTIONS.has(flag) && !OPTIONS.has(flagOf(v))
+                        ? `; use ${flag}=${v} or ./${v} for a value that starts with -`
+                        : '';
+                throw new UsageError(`${flag} needs ${what}, got option "${v}"${hint}`);
+            }
+            return v;
+        };
         if (a === '--json') opts.format = 'json';
         else if (a === '--bare') opts.bare = true;
         else if (a === '--strict') opts.strict = true;
-        else if (a === '-o' || a === '--output-file' || a.startsWith('--output-file=')) {
-            const value = a.includes('=') ? a.slice(a.indexOf('=') + 1) : argv[++i];
-            if (!value) throw new UsageError(`${a.split('=')[0] ?? a} needs a file path`);
-            opts.outputFile = value;
-        } else if (a === '--format' || a.startsWith('--format=')) {
-            const value = a.includes('=') ? a.slice(a.indexOf('=') + 1) : argv[++i];
-            if (value === undefined || !isFormat(value)) {
+        else if (/^(-o|--output-file)(=|$)/.test(a)) opts.outputFile = value('a file path');
+        else if (/^--format(=|$)/.test(a)) {
+            const format = value(`a value (one of ${FORMAT_NAMES.join(', ')})`);
+            if (!isFormat(format)) {
                 throw new UsageError(
-                    `--format needs one of ${FORMAT_NAMES.join(', ')}, got "${String(value)}"`
+                    `--format needs one of ${FORMAT_NAMES.join(', ')}, got "${format}"`
                 );
             }
-            opts.format = value;
+            opts.format = format;
         } else if (a === '-h' || a === '--help') opts.help = true;
         else if (a === '-v' || a === '--version') opts.version = true;
-        else if (a === '--timeout' || a.startsWith('--timeout=')) {
-            const value = a.includes('=') ? a.slice(a.indexOf('=') + 1) : argv[++i];
-            opts.timeout = Number(value);
+        else if (/^--timeout(=|$)/.test(a)) {
+            const ms = value('a value');
+            opts.timeout = Number(ms);
             // Number() keeps forms such as 1e3 working; the cap is what setTimeout takes.
             if (
                 !Number.isInteger(opts.timeout) ||
@@ -74,18 +110,19 @@ export function parseArgs(argv: readonly string[]): Options {
                 opts.timeout > MAX_TIMEOUT_MS
             ) {
                 throw new UsageError(
-                    `--timeout needs a whole number of milliseconds from 1 to ${MAX_TIMEOUT_MS} (about 24 days), got "${String(value)}"`
+                    `--timeout needs a whole number of milliseconds from 1 to ${MAX_TIMEOUT_MS} (about 24 days), got "${ms}"`
                 );
             }
         } else if (a === '--probe' || a.startsWith('--probe=')) {
-            const value = a.includes('=') ? a.slice(a.indexOf('=') + 1) : argv[++i];
-            if (value === undefined) throw new UsageError('--probe needs the arguments to probe');
+            // Not value(): a probe may well start with -, such as --probe "--json".
+            const probe = a.includes('=') ? a.slice(a.indexOf('=') + 1) : argv[++i];
+            if (probe === undefined) throw new UsageError('--probe needs the arguments to probe');
             let words: string[];
             try {
-                words = shellSplit(value);
+                words = shellSplit(probe);
             } catch (error) {
                 throw new UsageError(
-                    `--probe ${shellJoin([value])} ${error instanceof Error ? error.message : String(error)}`
+                    `--probe ${shellJoin([probe])} ${error instanceof Error ? error.message : String(error)}`
                 );
             }
             if (words.length === 0) {
@@ -93,9 +130,8 @@ export function parseArgs(argv: readonly string[]): Options {
             }
             opts.probes.push(words);
         } else if (/^--(check|skip)(=|$)/.test(a)) {
-            const flag = a.split('=')[0] ?? a;
-            const value = a.includes('=') ? a.slice(a.indexOf('=') + 1) : argv[++i];
-            const names = (value ?? '')
+            const flag = flagOf(a);
+            const names = value('a check name')
                 .split(',')
                 .map((n) => n.trim())
                 .filter(Boolean);

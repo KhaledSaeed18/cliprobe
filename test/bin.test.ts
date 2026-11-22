@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CHECKS } from '../src/checks/index.ts';
 import { cliprobeBin, fixture, ROOT } from './helpers/cli.ts';
@@ -45,6 +47,21 @@ describe('the built cliprobe', () => {
         );
         expect(r.stderr).not.toContain('TimeoutOverflowWarning');
         expect(r.stdout).toBe('');
+    });
+
+    it('rejects -o followed by another option instead of writing a file named after it', () => {
+        const cwd = mkdtempSync(join(tmpdir(), 'cliprobe-bin-'));
+        try {
+            const r = cliprobeBin(
+                ['-o', '--strict', '--check', 'closed-pipe', '--', 'printf', 'x'],
+                cwd
+            );
+            expect(r.status).toBe(2);
+            expect(r.stderr).toMatch(/^cliprobe: -o needs a file path, got option "--strict"/);
+            expect(readdirSync(cwd)).toEqual([]);
+        } finally {
+            rmSync(cwd, { recursive: true, force: true });
+        }
     });
 
     it('probes each --probe after the defaults, in one report', () => {

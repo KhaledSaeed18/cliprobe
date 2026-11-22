@@ -145,3 +145,56 @@ describe('parseArgs --timeout', () => {
         }
     });
 });
+
+describe('option values that are another option', () => {
+    it('rejects an option where -o, --format, --timeout, --check or --skip expect a value', () => {
+        const cases: [string[], RegExp][] = [
+            [['-o', '--strict', 'node'], /^-o needs a file path, got option "--strict"/],
+            [
+                ['--output-file', '--json', 'node'],
+                /^--output-file needs a file path, got option "--json"/,
+            ],
+            [
+                ['--format', '--json', 'node'],
+                /^--format needs a value \(one of human, json, markdown, junit\), got option "--json"/,
+            ],
+            [['--timeout', '--strict', 'node'], /^--timeout needs a value, got option "--strict"/],
+            [['--check', '--strict', 'node'], /^--check needs a check name, got option "--strict"/],
+            [['--skip', '-o', 'x', 'node'], /^--skip needs a check name, got option "-o"/],
+            [['-o', '-', 'node'], /^-o needs a file path, got option "-"/],
+        ];
+        for (const [argv, message] of cases) expect(() => parseArgs(argv)).toThrow(message);
+    });
+
+    it('says how to give a value that starts with -', () => {
+        expect(() => parseArgs(['-o', '-report.json', 'node'])).toThrow(
+            /use -o=-report\.json or \.\/-report\.json for a value that starts with -/
+        );
+    });
+
+    it('takes any value after =, and a path such as ./-file after -o', () => {
+        expect(parseArgs(['-o=-report.json', 'node']).outputFile).toBe('-report.json');
+        expect(parseArgs(['--output-file=--strict', 'node']).outputFile).toBe('--strict');
+        expect(parseArgs(['-o', './-file', 'node']).outputFile).toBe('./-file');
+        expect(parseArgs(['-o=r.xml', 'node']).outputFile).toBe('r.xml');
+    });
+
+    it('says a value is missing instead of printing "undefined"', () => {
+        expect(() => parseArgs(['--timeout'])).toThrow(/^--timeout needs a value$/);
+        expect(() => parseArgs(['--timeout='])).toThrow(/^--timeout needs a value$/);
+        expect(() => parseArgs(['--format'])).toThrow(
+            /^--format needs a value \(one of human, json, markdown, junit\)$/
+        );
+        expect(() => parseArgs(['-o='])).toThrow(/^-o needs a file path$/);
+    });
+
+    it('still lets --probe take a value that starts with -, to probe a flag', () => {
+        expect(parseArgs(['--probe', '--json', 'node']).probes).toEqual([['--json']]);
+        expect(parseArgs(['--probe', '-v', '--', 'node']).probes).toEqual([['-v']]);
+    });
+
+    it('keeps --strict when it follows -o and its path', () => {
+        const opts = parseArgs(['-o', 'r.json', '--strict', '--format', 'json', 'node']);
+        expect(opts).toMatchObject({ outputFile: 'r.json', strict: true, format: 'json' });
+    });
+});
