@@ -9,7 +9,7 @@ process.stdout.on('error', (error: NodeJS.ErrnoException) => {
     throw error;
 });
 
-// Ctrl-C, SIGTERM or SIGHUP stop the probe and remove the temporary directories
+// Ctrl-C, SIGTERM or SIGHUP stop the probe and remove the temporary files
 // before cliprobe exits by the same signal: its probes run in their own process
 // groups, so the signal never reaches them.
 handleInterrupts();
