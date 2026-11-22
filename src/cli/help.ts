@@ -72,8 +72,10 @@ Options:
                      summary or PR comment) or junit (XML for CI test reports)
   --json             Same as --format json
   -o, --output-file <path>
-                     Write the --format report to a file (created atomically,
-                     with parent folders); the human report still prints.
+                     Write the --format report to a file (replaced atomically,
+                     keeping its mode, with parent folders created; a FIFO or
+                     /dev/stdout is written in place); the human report still
+                     prints.
                      For a path that starts with -, use -o=<path> or ./<path>
   --timeout <ms>     Kill a probe after this long (default 15000, at most
                      2147483647, about 24 days). A command still running then

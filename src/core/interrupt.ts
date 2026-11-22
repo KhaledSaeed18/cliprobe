@@ -2,7 +2,7 @@
  * What to undo if cliprobe itself is interrupted mid-run. Probes run in their own
  * process groups, so the Ctrl-C or SIGTERM that stops cliprobe never reaches
  * them: each live run registers how to kill what it started and remove its
- * temporary directories, and the signal handler runs all of that before exiting.
+ * temporary files, and the signal handler runs all of that before exiting.
  */
 
 type Cleanup = () => void;

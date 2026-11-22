@@ -114,7 +114,7 @@ export async function run(argv: readonly string[], io: CliIO): Promise<number> {
     const { color } = io;
     if (opts.outputFile) {
         try {
-            writeReportFile(opts.outputFile, FORMATS[opts.format](report, { color: false }));
+            await writeReportFile(opts.outputFile, FORMATS[opts.format](report, { color: false }));
         } catch (error) {
             const reason = error instanceof Error ? error.message : String(error);
             err(`cliprobe: could not write ${safe(opts.outputFile)}: ${safe(reason)}\n`);
