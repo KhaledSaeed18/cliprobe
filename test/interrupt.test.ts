@@ -1,6 +1,6 @@
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
-import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { lstatSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -171,6 +171,33 @@ describe('the built cliprobe, interrupted', () => {
             'ls {fixture}; sleep 73',
         ]);
         expect(r).toEqual({ signal: 'SIGTERM', left: [], dirs: [] });
+    });
+
+    it('still dies by Ctrl-C while its report waits for a FIFO that nobody reads', async () => {
+        const dir = mkdtempSync(join(tmpdir(), 'cliprobe-fifo-test-'));
+        try {
+            const fifo = join(dir, 'report.fifo');
+            execFileSync('mkfifo', [fifo]);
+            const isSleep = (line: string): boolean => line === 'sleep 0.76';
+            const child = spawn(
+                node,
+                [BIN, '-o', fifo, '--check', 'closed-pipe', '--', 'sleep', '0.76'],
+                { detached: true, stdio: 'ignore' }
+            );
+            const exited = new Promise<NodeJS.Signals | null>((resolve) => {
+                child.once('exit', (_, s) => resolve(s));
+            });
+            await until(() => running(isSleep).length > 0);
+            await until(() => running(isSleep).length === 0);
+            // Now waiting to open the FIFO: the signal must still end it, and the FIFO stay one.
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            process.kill(-(child.pid ?? 0), 'SIGINT');
+            expect(await exited).toBe('SIGINT');
+            expect(lstatSync(fifo).isFIFO()).toBe(true);
+            expect(readdirSync(dir)).toEqual(['report.fifo']);
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
     });
 
     it.skipIf(!ptySupport().ok)(

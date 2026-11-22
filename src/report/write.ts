@@ -133,8 +133,8 @@ export function reportPathProblem(path: string): string | undefined {
 /**
  * Writes a report to `path` as reportTarget decides: a regular file is replaced
  * whole (missing parent folders are created), anything else is written in
- * place. Asynchronous, so that a FIFO nobody reads yet doesn't block the
- * signal handlers. Throws an Error that says why on failure, leaving no
+ * place. Asynchronous, so that waiting for a FIFO's reader leaves the event
+ * loop, and the signal handlers, running. Throws an Error that says why on failure, leaving no
  * temporary file, even if cliprobe is interrupted meanwhile.
  */
 export async function writeReportFile(path: string, text: string): Promise<void> {
