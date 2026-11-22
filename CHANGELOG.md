@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.4.2](https://github.com/KhaledSaeed18/cliprobe/compare/v1.4.1...v1.4.2) (2026-11-22)
+
+### Bug Fixes
+
+* **args:** reject a --timeout that setTimeout would overflow ([a10ef51](https://github.com/KhaledSaeed18/cliprobe/commit/a10ef51084b2c0af56aae3a385d0c2d19152daaf)), closes [#30](https://github.com/KhaledSaeed18/cliprobe/issues/30)
+* **args:** reject an option where an option's value should be ([f81da34](https://github.com/KhaledSaeed18/cliprobe/commit/f81da34b4ae59f9cc1009501cbc7df822ccebfdc)), closes [#31](https://github.com/KhaledSaeed18/cliprobe/issues/31)
+* check the --output-file path before running any probe ([0fb6490](https://github.com/KhaledSaeed18/cliprobe/commit/0fb6490097d5aa020d18afb649e86c61215ae0bd)), closes [#33](https://github.com/KhaledSaeed18/cliprobe/issues/33)
+* **report:** write --output-file through symlinks, FIFOs and /dev/stdout ([6b7418a](https://github.com/KhaledSaeed18/cliprobe/commit/6b7418a6e9c8ccc4be2d1c91314dc9df65fbaac5)), closes [#32](https://github.com/KhaledSaeed18/cliprobe/issues/32)
+
 ## [1.4.1](https://github.com/KhaledSaeed18/cliprobe/compare/v1.4.0...v1.4.1) (2026-11-20)
 
 ### Bug Fixes
