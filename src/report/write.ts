@@ -47,7 +47,7 @@ function statPath(path: string): Stats | undefined {
     } catch (error) {
         const code = errorCode(error);
         if (code === 'ENOENT' || code === 'ENOTDIR') return undefined;
-        throw new ReportPathError(describe(error));
+        throw new ReportPathError(describeWriteError(error));
     }
 }
 
@@ -105,16 +105,17 @@ export function reportTarget(path: string): ReportTarget {
     return { how: 'replace', path: target, mode: undefined };
 }
 
-/** A failed write in words, without the temporary file's name that the raw error gives. */
-function describe(error: unknown): string {
+/**
+ * A failed write in words, without the file name that a raw error ends with, which
+ * may be the temporary file's: "ENOSPC: no space left on device".
+ */
+export function describeWriteError(error: unknown): string {
     if (error instanceof ReportPathError) return error.message;
     const code = errorCode(error);
     if (code === 'ELOOP') return 'too many levels of symbolic links';
     if (code === 'EACCES' || code === 'EPERM') return 'permission denied';
-    if (code === 'ENOSPC') return 'no space left on the device';
-    if (code === 'EROFS') return 'read-only file system';
-    if (code === 'EISDIR') return 'is a directory';
-    return error instanceof Error ? error.message : String(error);
+    const message = error instanceof Error ? error.message : String(error);
+    return message.replace(/, \w+ '.*$/s, '');
 }
 
 /**
@@ -126,7 +127,7 @@ export function reportPathProblem(path: string): string | undefined {
         reportTarget(path);
         return undefined;
     } catch (error) {
-        return describe(error);
+        return describeWriteError(error);
     }
 }
 
@@ -142,13 +143,13 @@ export async function writeReportFile(path: string, text: string): Promise<void>
     try {
         target = reportTarget(path);
     } catch (error) {
-        throw new Error(describe(error), { cause: error });
+        throw new Error(describeWriteError(error), { cause: error });
     }
     if (target.how === 'direct') {
         try {
             await writeFile(target.path, text);
         } catch (error) {
-            throw new Error(describe(error), { cause: error });
+            throw new Error(describeWriteError(error), { cause: error });
         }
         return;
     }
@@ -161,8 +162,9 @@ export async function writeReportFile(path: string, text: string): Promise<void>
         if (target.mode !== undefined) await chmod(temp, target.mode);
         await rename(temp, target.path);
     } catch (error) {
-        await rm(temp, { force: true });
-        throw new Error(describe(error), { cause: error });
+        // Best effort: a failure here must not hide why the write failed.
+        await rm(temp, { force: true }).catch(() => undefined);
+        throw new Error(describeWriteError(error), { cause: error });
     } finally {
         unregister();
     }

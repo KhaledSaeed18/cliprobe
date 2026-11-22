@@ -14,13 +14,19 @@ import {
     symlinkSync,
     writeFileSync,
 } from 'node:fs';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { XMLValidator } from 'fast-xml-parser';
 import { afterAll, describe, expect, it } from 'vitest';
 import { parseArgs, UsageError } from '../src/cli/args.ts';
 import { runInterruptCleanups } from '../src/core/interrupt.ts';
-import { reportPathProblem, reportTarget, writeReportFile } from '../src/report/write.ts';
+import {
+    describeWriteError,
+    reportPathProblem,
+    reportTarget,
+    writeReportFile,
+} from '../src/report/write.ts';
 import { cliprobe, fixture } from './helpers/cli.ts';
 
 const scratch = mkdtempSync(join(tmpdir(), 'cliprobe-out-'));
@@ -171,6 +177,45 @@ describe('writeReportFile', () => {
         runInterruptCleanups();
         expect(existsSync(temp)).toBe(false);
         await pending;
+    });
+});
+
+describe('writeReportFile failures', () => {
+    it('says why a write in place failed', async () => {
+        const dir = mkdtempSync(join(scratch, 'sock-'));
+        const socket = join(dir, 's.sock');
+        const server = createServer();
+        await new Promise<void>((done) => server.listen(socket, done));
+        try {
+            expect(reportTarget(socket).how).toBe('direct');
+            // ENXIO on Linux, EOPNOTSUPP on macOS: either way, an error rather than a replaced socket.
+            await expect(writeReportFile(socket, 'x')).rejects.toThrow(Error);
+            expect(lstatSync(socket).isSocket()).toBe(true);
+        } finally {
+            await new Promise((done) => server.close(done));
+        }
+    });
+
+    it('removes its temporary file when the write fails, and says why', async () => {
+        const path = join(mkdtempSync(join(scratch, 'fails-')), 'report.txt');
+        const temp = `${path}.cliprobe-${process.pid}.tmp`;
+        const pending = writeReportFile(path, 'x');
+        // In the way of the temporary file, after the check and before the write.
+        mkdirSync(temp);
+        await expect(pending).rejects.toThrow(/^EISDIR: illegal operation on a directory$/);
+        expect(existsSync(path)).toBe(false);
+    });
+
+    it('words file system errors without the temporary file name', () => {
+        const error = (code: string, message: string): Error =>
+            Object.assign(new Error(message), { code });
+        expect(
+            describeWriteError(error('ENOSPC', "ENOSPC: no space left on device, write 'r.tmp'"))
+        ).toBe('ENOSPC: no space left on device');
+        expect(describeWriteError(error('EPERM', 'EPERM: operation not permitted'))).toBe(
+            'permission denied'
+        );
+        expect(describeWriteError('odd')).toBe('odd');
     });
 });
 
