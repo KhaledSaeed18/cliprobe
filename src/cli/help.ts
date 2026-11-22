@@ -85,7 +85,7 @@ Options:
   -v, --version      Show the version
 
 Exit codes: 0 no failures, 1 a check failed (or warned, with --strict), 2 usage
-error or could not run.
+error, could not run, or could not write the --output-file report.
 Runs the target in the current directory without a shell, with stdin closed
 (the stdin, ctrl-c and sigterm checks use a pipe they never write to), a
 temporary HOME and a minimal environment. Only run programs you trust. When a

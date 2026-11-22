@@ -146,13 +146,13 @@ An option's value follows it or comes after `=` (`--format=json`). A value that 
 
 ## Exit codes
 
-| Code | Meaning                                   |
-| ---- | ----------------------------------------- |
-| `0`  | No check failed                           |
-| `1`  | A check failed, or warned with `--strict` |
-| `2`  | Usage error, or the command could not run |
+| Code | Meaning                                                                                    |
+| ---- | ------------------------------------------------------------------------------------------ |
+| `0`  | No check failed                                                                            |
+| `1`  | A check failed, or warned with `--strict`                                                  |
+| `2`  | Usage error, the command could not run, or the `--output-file` report could not be written |
 
-A command that can't run is reported once, before any check runs, with exit `2` and no report: one that isn't on `PATH`, a directory, a file without the execute bit (`chmod +x`), or a script whose `#!` interpreter is missing. A file this system can't execute at all, such as a binary built for another platform, makes every check say could-not-run (`ERROR`), so cliprobe exits `2` there too; on Linux, where `/bin/sh` tries such a file as a script, cliprobe recognizes the shell's complaint. That makes cliprobe usable as a CI gate.
+A command that can't run is reported once, before any check runs, with exit `2` and no report: one that isn't on `PATH`, a directory, a file without the execute bit (`chmod +x`), or a script whose `#!` interpreter is missing. A file this system can't execute at all, such as a binary built for another platform, makes every check say could-not-run (`ERROR`), so cliprobe exits `2` there too; on Linux, where `/bin/sh` tries such a file as a script, cliprobe recognizes the shell's complaint. An `--output-file` path that can't be written, such as a directory or a folder without write permission, is also reported before any check runs, with exit `2`. If the file still can't be written at the end, cliprobe prints the human report first, so no result is lost, then the error, and exits `2` even when a check failed: CI fails the step either way. That makes cliprobe usable as a CI gate.
 
 ## In CI
 
