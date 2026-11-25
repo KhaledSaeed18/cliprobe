@@ -2,7 +2,14 @@ import { execFileSync } from 'node:child_process';
 import { dirname } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { describe, expect, it } from 'vitest';
-import { cleanPtyOutput, ptyArgs, ptySupport, runPty, shellQuote } from '../src/core/pty.ts';
+import {
+    cleanPtyOutput,
+    ptyArgs,
+    ptySupport,
+    runPty,
+    settingsOff,
+    shellQuote,
+} from '../src/core/pty.ts';
 import { cliprobe, fixture } from './helpers/cli.ts';
 
 const node = process.execPath;
@@ -56,6 +63,37 @@ describe('ptyArgs', () => {
     it('quotes for a POSIX shell', () => {
         expect(shellQuote("a'b")).toBe("'a'\\''b'");
         expect(shellQuote('')).toBe("''");
+    });
+});
+
+describe('settingsOff (#35)', () => {
+    // Trimmed `stty -a` output, as BSD (macOS) and GNU (Linux) print it.
+    const bsdBefore =
+        'lflags: icanon isig iexten echo echoe -echok echoke -echonl echoctl\n\tiflags: -istrip icrnl -inlcr -igncr ixon -ixoff\n\toflags: opost onlcr -oxtabs';
+    const gnuBefore =
+        '-ignbrk -brkint -ignpar icrnl ixon -ixoff\nopost -olcuc -ocrnl onlcr -onocr\nisig icanon iexten echo echoe echok -echonl';
+
+    it('lists the watched settings that were on before and are off after', () => {
+        const raw = (s: string): string =>
+            s.replace(/(^|\s)(icanon|echo|isig|iexten|opost|icrnl|ixon)(?=\s|$)/g, '$1-$2');
+        const expected = ['icanon', 'echo', 'isig', 'iexten', 'opost', 'icrnl', 'ixon'];
+        expect(settingsOff(bsdBefore, raw(bsdBefore))).toEqual(expected);
+        expect(settingsOff(gnuBefore, raw(gnuBefore))).toEqual(expected);
+    });
+
+    it('finds nothing when the settings are as they were', () => {
+        expect(settingsOff(bsdBefore, bsdBefore)).toEqual([]);
+        expect(settingsOff(gnuBefore, gnuBefore)).toEqual([]);
+    });
+
+    it('ignores a setting that was already off, and one switched on', () => {
+        const before = 'icanon -echo -opost isig';
+        expect(settingsOff(before, 'icanon -echo opost isig')).toEqual([]);
+        expect(settingsOff(before, '-icanon -echo -opost isig')).toEqual(['icanon']);
+    });
+
+    it('does not mistake echoe or -echok for echo', () => {
+        expect(settingsOff('echo echoe echok', 'echo -echoe -echok')).toEqual([]);
     });
 });
 
@@ -161,6 +199,42 @@ describe('runPty', () => {
         expect(r.timedOut).toBe(false);
         expect(r.inputSentMs).toBeGreaterThanOrEqual(300);
         expect(performance.now() - start).toBeLessThan(3000);
+    });
+
+    it('reads the settings a program left, only when asked to', async () => {
+        const off = await runPty('/bin/sh', ['-c', 'stty -echo -icanon; echo done'], {
+            timeout: 5000,
+            settings: true,
+        });
+        expect(off.output).toBe('done\n');
+        expect(off.settingsOff).toEqual(['icanon', 'echo']);
+        const kept = await runPty('/bin/sh', ['-c', 'echo done'], {
+            timeout: 5000,
+            settings: true,
+        });
+        expect(kept.settingsOff).toEqual([]);
+        expect(kept.exitCode).toBe(0);
+        const plain = await runPty('/bin/sh', ['-c', 'stty -echo'], { timeout: 5000 });
+        expect(plain.settingsOff).toBeUndefined();
+    });
+
+    it('keeps the exit code and the Ctrl-C key with settings read', async () => {
+        const failed = await runPty('/bin/sh', ['-c', 'exit 3'], { timeout: 5000, settings: true });
+        expect(failed.exitCode).toBe(3);
+        const r = await runPty(node, [fixture('restore/raw-key-restores')], {
+            timeout: 8000,
+            input: { data: '\x03', afterMs: 2000 },
+            settings: true,
+        });
+        expect(r.timedOut).toBe(false);
+        expect(r.output).toContain('\x1b[?1049l');
+        expect(r.settingsOff).toEqual([]);
+    });
+
+    it('has no settings to report for a program still running at the timeout', async () => {
+        const r = await runPty('sleep', ['10'], { timeout: 1000, settings: true });
+        expect(r.timedOut).toBe(true);
+        expect(r.settingsOff).toBeUndefined();
     });
 
     it('delivers Ctrl-C as a key to a program in raw mode', async () => {
