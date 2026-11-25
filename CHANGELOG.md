@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.4](https://github.com/KhaledSaeed18/cliprobe/compare/v1.4.3...v1.4.4) (2026-11-25)
+
+### Bug Fixes
+
+* **baseline:** say "1 line", not "1 lines" ([12dbfdf](https://github.com/KhaledSaeed18/cliprobe/commit/12dbfdfaa35bfc341e1a9c927bb7a841460390cc))
+* **control-chars:** name each probe in the skip without {fixture} ([7b2a6b2](https://github.com/KhaledSaeed18/cliprobe/commit/7b2a6b29c5ebaa711b9c2bdb79b6460c1733ad32))
+* **report:** make human evidence unambiguous and keep rows narrow ([b336fba](https://github.com/KhaledSaeed18/cliprobe/commit/b336fbadb27a5cd42b6fa1722e1acb5d425583da)), closes [#38](https://github.com/KhaledSaeed18/cliprobe/issues/38)
+
 ## [1.4.3](https://github.com/KhaledSaeed18/cliprobe/compare/v1.4.2...v1.4.3) (2026-11-25)
 
 ### Bug Fixes
