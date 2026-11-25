@@ -23,16 +23,16 @@ Text from the program is escaped in the JSON text: control characters, line sepa
 
 ## What each check looks for
 
-| Check           | Default probes        | Fails when                                                                              | Warns when                                                                |
-| --------------- | --------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `closed-pipe`   | yes                   | It prints an EPIPE error or stack and changes its exit code, or hangs, on a closed pipe | It prints a write error but keeps its exit code                           |
-| `color`         | yes                   | Color or style codes reach stdout in a pipe                                             | Color reaches stderr in a pipe, or `NO_COLOR` doesn't turn it off         |
-| `pipe-escapes`  | yes                   | Cursor, erase, hyperlink, title or redraw codes reach a pipe                            | Only carriage returns reach the pipe                                      |
-| `stdin`         | yes                   | `--help` or `--version` waits for stdin                                                 | A probe you wrote prompts although stdin isn't a terminal                 |
-| `ctrl-c`        | needs a running probe | It keeps running 3 s after Ctrl-C, or prints a stack trace                              | It exits 0 after Ctrl-C, or leaves processes running that ignored it      |
-| `sigterm`       | needs a running probe | Never; new checks start as warnings                                                     | It ignores SIGTERM, prints a stack trace, or leaves processes running     |
-| `restore`       | yes                   | Never                                                                                   | A terminal mode (hidden cursor, alternate screen, ...) is left on         |
-| `control-chars` | needs `{fixture}`     | An escape sequence from a file name reaches the terminal unescaped                      | A C1 control, carriage return or newline from a name reaches it unescaped |
+| Check           | Default probes        | Fails when                                                                              | Warns when                                                                                                                        |
+| --------------- | --------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `closed-pipe`   | yes                   | It prints an EPIPE error or stack and changes its exit code, or hangs, on a closed pipe | It prints a write error but keeps its exit code                                                                                   |
+| `color`         | yes                   | Color or style codes reach stdout in a pipe                                             | Color reaches stderr in a pipe, or `NO_COLOR` doesn't turn it off                                                                 |
+| `pipe-escapes`  | yes                   | Cursor, erase, hyperlink, title or other OSC codes reach a pipe                         | Only carriage returns, or only escape sequences added in 1.5 (`escape`, `reset`, `string`, `c1`, OSC without `;`), reach the pipe |
+| `stdin`         | yes                   | `--help` or `--version` waits for stdin                                                 | A probe you wrote prompts although stdin isn't a terminal                                                                         |
+| `ctrl-c`        | needs a running probe | It keeps running 3 s after Ctrl-C, or prints a stack trace                              | It exits 0 after Ctrl-C, or leaves processes running that ignored it                                                              |
+| `sigterm`       | needs a running probe | Never; new checks start as warnings                                                     | It ignores SIGTERM, prints a stack trace, or leaves processes running                                                             |
+| `restore`       | yes                   | Never                                                                                   | A terminal mode (hidden cursor, alternate screen, ...) is left on                                                                 |
+| `control-chars` | needs `{fixture}`     | An escape sequence from a file name reaches the terminal unescaped                      | A C1 control, carriage return or newline from a name reaches it unescaped                                                         |
 
 `SKIP` always says what was missing: a probe that keeps running, a probe with `{fixture}`, output to judge, or the `script` command. Two info checks, `startup` and `baseline`, run only when named with `--check` and never fail.
 

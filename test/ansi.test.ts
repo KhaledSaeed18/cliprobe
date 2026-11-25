@@ -71,6 +71,62 @@ describe('findControls', () => {
     it('finds nothing in plain text', () => {
         expect(findControls('just text\nand more\n')).toEqual([]);
     });
+
+    describe('sequences not yet calibrated (#42), found as warn-only', () => {
+        const C1 = (code: number): string => String.fromCharCode(code);
+        const found = (text: string): [string, string, boolean][] =>
+            findControls(text).map((h) => [h.kind, h.sequence, h.warnOnly]);
+
+        it.each([
+            [
+                'save and restore cursor',
+                '\x1b7saved\x1b8',
+                [
+                    ['escape', '\x1b7'],
+                    ['escape', '\x1b8'],
+                ],
+            ],
+            ['reverse index', '\x1bMx', [['escape', '\x1bM']]],
+            [
+                'character set and keypad mode',
+                '\x1b(Bx\x1b=',
+                [
+                    ['escape', '\x1b(B'],
+                    ['escape', '\x1b='],
+                ],
+            ],
+            ['full reset', 'a\x1bcb', [['reset', '\x1bc']]],
+            ['DCS ended by ST', '\x1bP1$r\x1b\\x', [['string', '\x1bP1$r\x1b\\']]],
+            [
+                'APC, PM and SOS',
+                '\x1b_G\x1b\\\x1b^p\x1b\\\x1bXs\x1b\\',
+                [
+                    ['string', '\x1b_G\x1b\\'],
+                    ['string', '\x1b^p\x1b\\'],
+                    ['string', '\x1bXs\x1b\\'],
+                ],
+            ],
+            ['an unended DCS, by its introducer', '\x1bPq', [['string', '\x1bP']]],
+            ['OSC without a semicolon', '\x1b]104\x07x', [['osc', '\x1b]104\x07']]],
+            ['8-bit CSI', `${C1(0x9b)}2J`, [['c1', `${C1(0x9b)}2J`]]],
+            ['8-bit OSC', `${C1(0x9d)}0;t\x07`, [['c1', `${C1(0x9d)}0;t\x07`]]],
+            ['8-bit DCS', `${C1(0x90)}q${C1(0x9c)}`, [['c1', `${C1(0x90)}q${C1(0x9c)}`]]],
+        ])('%s', (_name, text, expected) => {
+            expect(found(text)).toEqual(expected.map(([kind, sequence]) => [kind, sequence, true]));
+        });
+
+        it('keeps the calibrated sequences fail-worthy, and never counts one sequence twice', () => {
+            expect(found('\x1b]0;t\x1b\\\x1b[2K\x1b]8;;u\x07')).toEqual([
+                ['title', '\x1b]0;t\x1b\\', false],
+                ['erase', '\x1b[2K', false],
+                ['hyperlink', '\x1b]8;;u\x07', false],
+            ]);
+        });
+
+        it('ignores an ESC that starts no sequence, and other C1 characters', () => {
+            expect(found(`a\x1b\nb\x1b${C1(0x85)}${C1(0x9c)}`)).toEqual([]);
+        });
+    });
 });
 
 describe('stripEscapes', () => {

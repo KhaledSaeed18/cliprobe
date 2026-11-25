@@ -265,14 +265,16 @@ Many classic tools (git, BSD `ls` and `grep`) color correctly but don't implemen
 
 cliprobe runs the command into a pipe, with the same environment as the color check, and looks at stdout and stderr for terminal control codes that only make sense on a screen: cursor movement, line and screen erases, mode switches such as hiding the cursor, hyperlinks (OSC 8), window titles, and carriage returns that redraw a line. Spinners and progress bars are the usual source. In a pipe they turn logs and agent transcripts into `\r\x1b[2K` noise. Results:
 
-| Verdict | Meaning                                                                           |
-| ------- | --------------------------------------------------------------------------------- |
-| `PASS`  | None of those codes reached the pipe (color is the color check's business)        |
-| `FAIL`  | An escape sequence reached stdout or stderr; the reason lists which kinds         |
-| `WARN`  | Only carriage returns reached the pipe, redrawing a line as a progress meter does |
-| `SKIP`  | Printed nothing                                                                   |
+| Verdict | Meaning                                                                                                                                        |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PASS`  | None of those codes reached the pipe (color is the color check's business)                                                                     |
+| `FAIL`  | An escape sequence reached stdout or stderr; the reason lists which kinds                                                                      |
+| `WARN`  | Only carriage returns reached the pipe, redrawing a line as a progress meter does, or only control codes this check started looking for in 1.5 |
+| `SKIP`  | Printed nothing                                                                                                                                |
 
 A carriage-return redraw only warns because some tools draw a progress meter on stderr into a pipe by design: curl does, unless you pass `-s`. Before this check could fail, it ran on 78 commands doing real work (builds, linters, test runners, scaffolders, package managers and system tools) and 38 watch modes and dev servers, offline in a throwaway container. Every escape sequence it found was a real bug, such as a prompt hiding the cursor in a pipe (`changeset init`), `mocha --watch` hiding the cursor and `tsc --watch` clearing the screen; none was a false failure. Probe a command that does real work, such as an install or a build: `--help` and `--version` rarely draw spinners. With `{fixture}` in the args, the hostile file names themselves are left to the control-chars check: a lister that prints them raw into a pipe, as `ls` does, passes. If the codes come from data you passed in (a file you `cat`), they are yours, not the program's.
+
+Since 1.5 the check also finds the other escape sequences: saving and restoring the cursor (`ESC 7`, `ESC 8`), a full reset that clears the screen (`ESC c`), character set and keypad switches, device control strings (DCS, APC, PM, SOS), OSC codes without a `;` (`ESC ] 104`), and their 8-bit forms (C1 CSI and OSC, such as `0x9b 2J`). These only warn until a census of real tools shows they flag no working program; `details.stdoutKinds` and `details.stderrKinds` name them as `escape`, `reset`, `string`, `osc` and `c1`. A program that also prints one of the sequences above still fails.
 
 ### stdin
 
