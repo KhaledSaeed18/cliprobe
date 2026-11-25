@@ -1,3 +1,4 @@
+import { noteFailedExit } from '../core/evidence.ts';
 import { findStyle, type StyleHit } from '../core/ansi.ts';
 import { ptySupport, runPty, type PtyResult } from '../core/pty.ts';
 import { markLongRunning, probeTimeout, stillRunning } from '../core/long-running.ts';
@@ -77,7 +78,10 @@ export function judgeColor(runs: ColorRuns): Judgement {
     if (!findStyle(tty.output)) {
         const printed = runs.pipe.stdoutBytes > 0 || runs.pipe.stderr.length > 0 || tty.output;
         if (!printed) {
-            return { verdict: 'skip', reason: 'printed nothing, so there is no color to check' };
+            return noteFailedExit(
+                { verdict: 'skip', reason: 'printed nothing, so there is no color to check' },
+                runs.pipe
+            );
         }
         return { verdict: 'pass', reason: 'no color in a pipe or in a terminal' };
     }

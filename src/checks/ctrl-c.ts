@@ -1,4 +1,4 @@
-import { crashEvidence, TRACE_RE } from '../core/evidence.ts';
+import { crashEvidence, noteFailedExit, TRACE_RE } from '../core/evidence.ts';
 import { run, type RunResult } from '../core/run.ts';
 import type { Check, Judgement, Result } from '../core/types.ts';
 import { describeLeftovers } from './sigterm.ts';
@@ -32,10 +32,13 @@ export interface CtrlCResult extends Result {
 export function judgeCtrlC(r: RunResult): Judgement {
     if (r.spawnError) return { verdict: 'error', reason: `could not start: ${r.spawnError}` };
     if (r.signalSentMs === undefined) {
-        return {
-            verdict: 'skip',
-            reason: `finished in ${r.durationMs} ms, before Ctrl-C at ${CTRL_C_DELAY_MS} ms; probe a command that keeps running`,
-        };
+        return noteFailedExit(
+            {
+                verdict: 'skip',
+                reason: `finished in ${r.durationMs} ms, before Ctrl-C at ${CTRL_C_DELAY_MS} ms; probe a command that keeps running`,
+            },
+            r
+        );
     }
     if (r.timedOut) {
         return {

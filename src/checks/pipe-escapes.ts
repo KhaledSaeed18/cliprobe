@@ -1,3 +1,4 @@
+import { noteFailedExit } from '../core/evidence.ts';
 import { CONTROL_LABELS, type ControlHit, type ControlKind, findControls } from '../core/ansi.ts';
 import { withoutHostileNames } from '../core/fixture.ts';
 import { markLongRunning, probeTimeout, stillRunning } from '../core/long-running.ts';
@@ -54,7 +55,10 @@ export function judgePipeEscapes(r: RunResult): Judgement {
                   verdict: 'skip',
                   reason: `${stillRunning(r.durationMs)} and printed nothing so far`,
               }
-            : { verdict: 'skip', reason: 'printed nothing, so there is nothing to check' };
+            : noteFailedExit(
+                  { verdict: 'skip', reason: 'printed nothing, so there is nothing to check' },
+                  r
+              );
     }
     // A program still running at the timeout is judged on what it printed by then.
     if (r.timedOut) {

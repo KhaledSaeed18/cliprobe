@@ -1,3 +1,5 @@
+import type { Judgement } from './types.ts';
+
 /** Signs that a program reported a write failure or crashed with a stack trace. */
 export const ERROR_RE: RegExp =
     /EPIPE|broken ?pipe|BrokenPipeError|Unhandled 'error' event|^\s+at .+:\d+:\d+\)?$/im;
@@ -34,4 +36,22 @@ export function crashEvidence(
     if (!frame) return message;
     const cwd = process.cwd() + '/';
     return `${message} (at ${frame.startsWith(cwd) ? frame.slice(cwd.length) : frame})`;
+}
+
+/**
+ * Adds to a SKIP that a probe exited with a failure code, so a probe that never ran
+ * as intended (a typo, `--probe watch` running `node watch`) doesn't pass for a quiet
+ * skip. The evidence is the error line from stderr, when there is one.
+ */
+export function noteFailedExit(
+    judgement: Judgement,
+    r: { exitCode: number | null; stderr: string }
+): Judgement {
+    if (judgement.verdict !== 'skip' || r.exitCode === null || r.exitCode === 0) return judgement;
+    const message = crashEvidence(r.stderr);
+    return {
+        ...judgement,
+        reason: `${judgement.reason}; it exited ${r.exitCode}, so the probe may not have run as intended`,
+        ...(message && judgement.evidence === undefined ? { evidence: `stderr: ${message}` } : {}),
+    };
 }
