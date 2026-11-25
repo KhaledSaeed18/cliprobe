@@ -40,6 +40,37 @@ describe('pipe-escapes: fixtures', () => {
         expect(result.reason).toMatch(reason);
     });
 
+    it.each([
+        ['decsc', /other escape sequence/],
+        ['ris', /full terminal reset/],
+        ['ri', /other escape sequence/],
+        ['charset', /other escape sequence/],
+        ['dcs', /control string/],
+        ['apc', /control string/],
+        ['osc104', /operating system command/],
+        ['c1csi', /8-bit control sequence/],
+        ['c1osc', /8-bit control sequence/],
+    ])('only warns on %s, which is still being calibrated (#42)', async (name, label) => {
+        const { status, report } = await probeJson([...escFixture('other'), name], only);
+        const result = first(report);
+        expect(result.verdict).toBe('warn');
+        expect(result.reason).toMatch(label);
+        expect(result.reason).toMatch(/a new finding, so only a warning for now$/);
+        expect(result.evidence).toMatch(/^stdout line 1: /);
+        expect(status).toBe(0);
+    });
+
+    it('still fails when a calibrated sequence comes with a new one', async () => {
+        const { status, report } = await probeJson([...escFixture('other'), 'mixed'], only);
+        expect(first(report).verdict).toBe('fail');
+        expect(first(report).reason).toBe(
+            'printed terminal control codes into a pipe: full terminal reset (ESC c) and line or screen erase'
+        );
+        expect(first(report).evidence).toBe('stdout line 1: \x1bc\x1b[2Kdone');
+        expect(first(report).details['stdoutKinds']).toEqual(['reset', 'erase']);
+        expect(status).toBe(1);
+    });
+
     it('skips a program that prints nothing', async () => {
         expect((await probe([node, fixture('color/empty')])).result.verdict).toBe('skip');
     });

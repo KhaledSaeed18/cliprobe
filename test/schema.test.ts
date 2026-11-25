@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { CHECKS } from '../src/checks/index.ts';
+import { CONTROL_LABELS } from '../src/core/ansi.ts';
 import { SCHEMA_VERSION } from '../src/report/json.ts';
 import { assertValidReport, first, probeJson, SCHEMA, undeclared } from './helpers/cli.ts';
 
@@ -15,6 +16,12 @@ describe('schema.json', () => {
         const names = CHECKS.map((c) => c.name);
         expect(SCHEMA.$defs['checkName']).toEqual({ enum: names });
         for (const name of names) expect(SCHEMA.$defs[`details.${name}`]).toBeDefined();
+    });
+
+    it('lists every kind of control code that pipe-escapes reports', () => {
+        expect((SCHEMA.$defs['controlKind'] as { enum?: string[] }).enum).toEqual(
+            Object.keys(CONTROL_LABELS)
+        );
     });
 
     it('carries the schema version the report writes', () => {

@@ -23,7 +23,9 @@ Checks:
   pipe-escapes  Runs the command into a pipe. Fails if cursor movement, erase,
                 mode switch, hyperlink or window title codes (spinners,
                 progress bars, prompts) reach stdout or stderr; warns if only
-                carriage returns redraw a line, as a progress meter does.
+                carriage returns redraw a line, as a progress meter does, or
+                for other escape sequences (save cursor, full reset, control
+                strings, 8-bit controls), which it does not fail on yet.
   stdin         Runs the command with stdin as an open pipe nobody writes to,
                 as agents and CI runners often leave it. Fails if --version or
                 --help waits for input; for your own probes, warns if it

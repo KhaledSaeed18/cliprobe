@@ -29,6 +29,8 @@ function listLabels(kinds: readonly ControlKind[]): string {
  * Escape sequences (cursor, erase, mode, hyperlink, title, other OSC) in a pipe fail: no
  * real tool in the censuses printed one there except by mistake. A carriage-return redraw
  * alone only warns, because some tools draw a progress meter on stderr by design (curl).
+ * The sequences added in 1.5 (other ESC sequences, a full reset, control strings, OSC
+ * without ";", 8-bit controls) only warn until a census calibrates them (#42).
  */
 export function judgePipeEscapes(r: RunResult): Judgement {
     if (r.spawnError) return { verdict: 'error', reason: `could not start: ${r.spawnError}` };
@@ -37,16 +39,27 @@ export function judgePipeEscapes(r: RunResult): Judgement {
         ...findControls(stdout).map((hit) => ({ stream: 'stdout', hit })),
         ...findControls(r.stderr).map((hit) => ({ stream: 'stderr', hit })),
     ];
-    const escape = hits.find((h) => h.hit.kind !== 'redraw');
-    const first = escape ?? hits[0];
+    const escape = hits.find((h) => h.hit.kind !== 'redraw' && !h.hit.warnOnly);
+    const newEscape = hits.find((h) => h.hit.warnOnly);
+    const first = escape ?? newEscape ?? hits[0];
     if (first) {
         const kinds = [...new Set(hits.map((h) => h.hit.kind))];
+        const evidence = `${first.stream} line ${first.hit.line}: ${first.hit.text}`;
+        if (escape) {
+            const reason = `printed terminal control codes into a pipe: ${listLabels(kinds)}`;
+            return { verdict: 'fail', reason, evidence };
+        }
+        if (newEscape) {
+            return {
+                verdict: 'warn',
+                reason: `printed terminal control codes into a pipe: ${listLabels(kinds)}; a new finding, so only a warning for now`,
+                evidence,
+            };
+        }
         return {
-            verdict: escape ? 'fail' : 'warn',
-            reason: escape
-                ? `printed terminal control codes into a pipe: ${listLabels(kinds)}`
-                : 'redrew lines with carriage returns in a pipe, as a progress meter does',
-            evidence: `${first.stream} line ${first.hit.line}: ${first.hit.text}`,
+            verdict: 'warn',
+            reason: 'redrew lines with carriage returns in a pipe, as a progress meter does',
+            evidence,
         };
     }
     if (!stdout && !r.stderr) {

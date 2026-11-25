@@ -89,7 +89,20 @@
             "description": "fail sets exit code 1; error means the probe could not run; info comes only from info checks."
         },
         "controlKind": {
-            "enum": ["cursor", "erase", "mode", "hyperlink", "title", "osc", "redraw"]
+            "description": "A kind of terminal control code. escape, reset, string and c1 were added in 1.5 and only warn for now.",
+            "enum": [
+                "cursor",
+                "erase",
+                "mode",
+                "hyperlink",
+                "title",
+                "osc",
+                "redraw",
+                "escape",
+                "reset",
+                "string",
+                "c1"
+            ]
         },
         "result": {
             "type": "object",
