@@ -46,7 +46,8 @@ export function describeHelp(r: RunResult): { reason: string; evidence?: string 
     const out = lines(r.stdout.toString('utf8'));
     const err = lines(r.stderr);
     if (out.length && r.exitCode === 0) {
-        return { reason: `printed ${out.length} lines to stdout and exited 0` };
+        const noun = out.length === 1 ? 'line' : 'lines';
+        return { reason: `printed ${out.length} ${noun} to stdout and exited 0` };
     }
     if (out.length) return { reason: `printed help to stdout but ${exitText(r)}` };
     if (err.length) {
