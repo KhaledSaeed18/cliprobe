@@ -47,7 +47,7 @@ You need:
 - macOS or Linux. Windows isn't supported.
 - Node.js 22.18 or later. The published package runs on 22.12, but `pnpm dev` runs the TypeScript sources directly through Node's built-in type stripping, which 22.18 turned on by default.
 - pnpm, at the version pinned in `packageManager` in `package.json` (`npm install --global pnpm@<version>`).
-- The `script` command, which macOS and most Linux distributions ship. On Alpine, install `util-linux-misc`.
+- The `script` command, which macOS and most Linux distributions ship. If it's missing, install `bsdutils` on Debian and Ubuntu, `util-linux-script` on Fedora, `util-linux-misc` on Alpine.
 
 ```sh
 git clone https://github.com/KhaledSaeed18/cliprobe.git

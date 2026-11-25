@@ -55,7 +55,7 @@ function detect(): PtySupport {
             if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
                 return {
                     ok: false,
-                    reason: 'script(1) not found; install util-linux (Debian and Ubuntu: bsdutils; Alpine: util-linux-misc)',
+                    reason: 'script(1) not found; install the package that has it (Debian and Ubuntu: bsdutils; Fedora: util-linux-script; Alpine: util-linux-misc)',
                 };
             }
         }

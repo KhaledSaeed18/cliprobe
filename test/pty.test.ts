@@ -207,7 +207,9 @@ describe('without script(1)', () => {
             .results[0];
         expect(result?.verdict).toBe('skip');
         expect(result?.reason).toMatch(
-            process.platform === 'darwin' ? /script\(1\) did not run/ : /Alpine: util-linux-misc/
+            process.platform === 'darwin'
+                ? /script\(1\) did not run/
+                : /script\(1\) not found; install the package that has it \(Debian and Ubuntu: bsdutils; Fedora: util-linux-script; Alpine: util-linux-misc\)/
         );
     });
 });

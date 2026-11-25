@@ -73,7 +73,7 @@ Search the repo for the old wording or numbers (`rg "seven checks"`) before you 
 - **Merge with "rebase and merge",** never squash, so every `feat` and `fix` lands in the changelog.
 - **Dependabot** opens at most one grouped pull request per group each Monday (npm minor and patch, npm major, GitHub Actions). Its commits are `build(deps-dev)` and `ci(deps)`, so merging one never publishes; ship it with the next `feat` or `fix`. `@types/node` stays on the major of the oldest supported Node.
 - **Run third-party CLIs only in a disposable Docker container with `--network none`,** never on the host. The test suite runs only cliprobe's own fixtures and standard system tools.
-- **Platforms:** macOS and Linux (including Alpine, where `script(1)` comes from `util-linux-misc`), Node 22.12 or later. Windows is not supported.
+- **Platforms:** macOS and Linux (including Alpine, where `script(1)` comes from `util-linux-misc`; Fedora has it in `util-linux-script`, Debian in `bsdutils`), Node 22.12 or later. Windows is not supported.
 
 ## Gotchas
 
