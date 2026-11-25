@@ -31,7 +31,7 @@ npx cliprobe -- tsx
 ```
 
 ```
-cliprobe 1.2.0: closed-pipe, color, pipe-escapes, stdin, ctrl-c, sigterm, restore, control-chars checks for tsx
+cliprobe 1.4.3: closed-pipe, color, pipe-escapes, stdin, ctrl-c, sigterm, restore, control-chars checks for tsx
 
 closed-pipe
   FAIL   tsx --version  crashed when stdout was closed (exit 0 -> 1)
@@ -101,7 +101,9 @@ The other checks cover the rest of what goes wrong between a program and the thi
 
 ## Installation
 
-Requires Node.js 22.12 or later, on macOS or Linux (including Alpine). Windows isn't supported yet. Run it without installing:
+Requires Node.js 22.12 or later, on macOS or Linux (including Alpine). Windows isn't supported yet. The terminal checks (color, restore and control-chars) also need the system's `script` command, which macOS has and most Linux distributions install by default. Without it they're skipped, and each skip says so. If it's missing, install the package that has it: `bsdutils` on Debian and Ubuntu, `util-linux-script` on Fedora, `util-linux-misc` on Alpine.
+
+Run it without installing:
 
 ```sh
 npx cliprobe -- <command>
@@ -131,7 +133,7 @@ npx cliprobe --strict --skip restore -- node ./dist/cli.js server   # warnings f
 | Option                       | Meaning                                                                                                                                                                                                                                                                                      |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--bare`                     | Probe the command with no arguments instead of `--version` and `--help`, as a probe you wrote                                                                                                                                                                                                |
-| `--probe <args>`             | Also probe `<command> <args>`; repeat it for several. Split like a shell command line (quotes and backslashes, no variables or wildcards)                                                                                                                                                    |
+| `--probe <args>`             | Also probe `<command> <args>`; repeat it for several. Split like a shell command line (quotes and backslashes, no variables or wildcards). The args after `<command>` aren't kept: with `-- node ./cli.js`, write `--probe "./cli.js watch"`                                                 |
 | `--check <name>`             | Run only this check; repeat it or use commas for several                                                                                                                                                                                                                                     |
 | `--skip <name>`              | Leave this check out; repeat it or use commas for several                                                                                                                                                                                                                                    |
 | `--strict`                   | Exit 1 on a warning too, not only on a failure                                                                                                                                                                                                                                               |
@@ -143,6 +145,8 @@ npx cliprobe --strict --skip restore -- node ./dist/cli.js server   # warnings f
 | `-v`, `--version`            | Show the version                                                                                                                                                                                                                                                                             |
 
 An option's value follows it or comes after `=` (`--format=json`). A value that is another option, as in `-o --strict`, is a usage error rather than a file named `--strict`. `--probe` is the exception: its value may start with `-`, to probe a flag (`--probe --json`).
+
+A probe runs `<command>` with its own args, in place of the args after the command, not after them. So when the command is an interpreter, name the script in every probe: `npx cliprobe --probe "./dist/cli.js watch" -- node ./dist/cli.js` probes `node ./dist/cli.js` and `node ./dist/cli.js watch`, while `--probe watch` would run `node watch`. A probe that exits with a failure code and is skipped says so in its reason, with the error line from stderr as evidence, so a probe that never ran as intended doesn't pass for a quiet skip.
 
 ## Exit codes
 
@@ -248,12 +252,12 @@ Servers and watchers crash the same way. Among 38 watch and serve modes of popul
 
 cliprobe runs the command up to three times: into a pipe, under a real terminal (a pseudo-terminal through the system's `script` command, 80×24), and under a terminal with `NO_COLOR=1`. Every run gets `TERM=xterm-256color` and no `CI` variable, so a program can't pass just because the terminal type looks colorless, and color libraries that force color in CI don't fail it. Color codes in piped output end up in log files and agent transcripts as `\x1b[31m` noise. Results:
 
-| Verdict | Meaning                                                                                                        |
-| ------- | -------------------------------------------------------------------------------------------------------------- |
-| `PASS`  | No color in a pipe; in a terminal, either no color at all or color that `NO_COLOR` turns off                   |
-| `FAIL`  | Printed color or style codes (bold counts, a bare reset doesn't) to stdout in a pipe                           |
-| `WARN`  | Printed color to stderr in a pipe, or kept printing color under `NO_COLOR`                                     |
-| `SKIP`  | Printed nothing, waited for input in a terminal, or no `script` command (on Alpine, install `util-linux-misc`) |
+| Verdict | Meaning                                                                                                     |
+| ------- | ----------------------------------------------------------------------------------------------------------- |
+| `PASS`  | No color in a pipe; in a terminal, either no color at all or color that `NO_COLOR` turns off                |
+| `FAIL`  | Printed color or style codes (bold counts, a bare reset doesn't) to stdout in a pipe                        |
+| `WARN`  | Printed color to stderr in a pipe, or kept printing color under `NO_COLOR`                                  |
+| `SKIP`  | Printed nothing, waited for input in a terminal, or no `script` command (see [Installation](#installation)) |
 
 Many classic tools (git, BSD `ls` and `grep`) color correctly but don't implement [`NO_COLOR`](https://no-color.org), so they get a `WARN`, never a `FAIL`. Probe a command that prints color in normal use: almost no CLI colors its `--help`.
 
@@ -435,15 +439,33 @@ Then ask in your own words, for example "check my CLI for pipe and Ctrl-C bugs b
 
 ## Safety
 
-cliprobe runs the target in your current directory without a shell, with stdin closed (`/dev/null`; the stdin, ctrl-c and sigterm checks use a pipe that they never write to), a temporary `HOME`, and a minimal environment (no tokens from your shell). It still executes the program, so only probe programs you trust. By default cliprobe passes only the arguments you give, after the command or with `--probe`, or `--version` and `--help`, or none with `--bare`; only the baseline check, when you name it, adds an unknown flag. The only input it ever sends is Ctrl-C, from the ctrl-c and restore checks, and SIGTERM, from the sigterm check, to probes you write. It kills each run's whole process group on timeout, including under a pseudo-terminal, and when a program exits it kills whatever it left running, in its group or started in another one, in every check. If cliprobe itself is stopped by Ctrl-C, SIGTERM or SIGHUP, it first kills the probe it is running and removes its temporary directories and any half-written report file, then exits by the same signal (130, 143 or 129). It runs on macOS and Linux, including Alpine; the terminal checks need the `script` command, which Alpine ships in `util-linux-misc`. Windows isn't supported yet.
+cliprobe runs the target in your current directory without a shell, with stdin closed (`/dev/null`; the stdin, ctrl-c and sigterm checks use a pipe that they never write to), a temporary `HOME`, and a minimal environment (no tokens from your shell; see [the probe's environment](#the-probes-environment)). It still executes the program, so only probe programs you trust. By default cliprobe passes only the arguments you give, after the command or with `--probe`, or `--version` and `--help`, or none with `--bare`; only the baseline check, when you name it, adds an unknown flag. The only input it ever sends is Ctrl-C, from the ctrl-c and restore checks, and SIGTERM, from the sigterm check, to probes you write. It kills each run's whole process group on timeout, including under a pseudo-terminal, and when a program exits it kills whatever it left running, in its group or started in another one, in every check. If cliprobe itself is stopped by Ctrl-C, SIGTERM or SIGHUP, it first kills the probe it is running and removes its temporary directories and any half-written report file, then exits by the same signal (130, 143 or 129). It runs on macOS and Linux, including Alpine; the terminal checks need the `script` command (see [Installation](#installation)). Windows isn't supported yet.
+
+### The probe's environment
+
+A probe gets only these variables. Nothing else from your shell reaches it, not even `LC_ALL` or the other `LC_*` variables, so only `LANG` sets the locale:
+
+| Variable             | Value                                                                                                     |
+| -------------------- | --------------------------------------------------------------------------------------------------------- |
+| `PATH`               | Yours                                                                                                     |
+| `LANG`               | Yours, or `C.UTF-8` if you have none                                                                      |
+| `HOME`, `TMPDIR`     | A new temporary directory for each run, removed afterwards                                                |
+| `TERM`               | `dumb`; `xterm-256color` in color, pipe-escapes and control-chars, and in every run under a terminal      |
+| `CI`                 | `1`; unset in color, pipe-escapes and control-chars, so color libraries that force color in CI don't fail |
+| `NO_UPDATE_NOTIFIER` | `1`, so update checks stay quiet                                                                          |
+| `NO_COLOR`           | `1` in the color check's last run only                                                                    |
+| `SHELL`              | `/bin/sh` in runs under a terminal, which `script` needs                                                  |
+| `SCRIPT`             | `/dev/null` in runs under a terminal on macOS, set by `script` itself                                     |
+
+The runs under a terminal are color's second and third, restore's, and control-chars'.
 
 ## FAQ
 
-**Why were ctrl-c, sigterm and control-chars skipped?** They need probes that a plain `--version` and `--help` run doesn't have: ctrl-c and sigterm need a command that keeps running, such as a server or a watcher, and control-chars needs one that prints file names from `{fixture}`. Add them with `--probe`, so one run covers every check: `npx cliprobe --probe "serve --port 0" --probe "list {fixture}" -- my-cli`.
+**Why were ctrl-c, sigterm and control-chars skipped?** They need probes that a plain `--version` and `--help` run doesn't have: ctrl-c and sigterm need a command that keeps running, such as a server or a watcher, and control-chars needs one that prints file names from `{fixture}`. Add them with `--probe`, so one run covers every check: `npx cliprobe --probe "serve --port 0" --probe "list {fixture}" -- my-cli`. If the reason adds that the probe exited with a failure code, it never ran as intended: check its arguments, and with `-- node ./cli.js`, name the script in the probe (`--probe "./cli.js serve"`).
 
 **My program works when I run it, so why does a check fail?** cliprobe sets up conditions that are rare by hand: stdout closed before the program starts, output into a pipe, stdin that nobody writes to, a minimal environment. Reproduce the failure the way the check's section shows, for example `my-cli --help | head -n 1` for closed-pipe or `my-cli --help | cat -v` for color, and read the evidence in `--json`. If you still believe the verdict is wrong, [open a wrong verdict issue](https://github.com/KhaledSaeed18/cliprobe/issues/new?template=wrong_verdict.yml).
 
-**Why does my program behave differently under cliprobe?** It runs without your shell's variables or your home directory: the environment has only `PATH`, `LANG`, `TERM`, `CI` and a temporary `HOME` and `TMPDIR`. A program that needs a token or a config file from your home directory sees neither, as on a fresh CI runner.
+**Why does my program behave differently under cliprobe?** It runs without your shell's variables or your home directory, with `TERM=dumb` and `CI=1` in most checks: [the probe's environment](#the-probes-environment) lists every variable. A program that needs a token or a config file from your home directory sees neither, as on a fresh CI runner.
 
 **Does a pass mean my CLI has no terminal bugs?** No. Each check tests one behavior, on the probes that ran; a subcommand that wasn't probed wasn't checked. cliprobe reports evidence, not a score, so add a `--probe` for each command your users pipe or interrupt.
 
