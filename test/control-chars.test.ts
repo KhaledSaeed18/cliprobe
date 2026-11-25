@@ -70,11 +70,22 @@ describe('control-chars: fixtures', () => {
         expect((await probe(lister('raw'))).status).toBe(1);
     });
 
-    it('skips once without {fixture}, saying how to use it', async () => {
-        const { report } = await probeJson([node, fixture('control-chars/raw'), '.'], only);
-        expect(report.results).toHaveLength(1);
-        expect(first(report).verdict).toBe('skip');
+    it('skips each probe the user named without {fixture}, saying how to use it', async () => {
+        const raw = fixture('control-chars/raw');
+        const { report } = await probeJson([node, raw, '.'], { ...only, probes: [`${raw} ..`] });
+        expect(report.results.map((r) => r.invocation)).toEqual([
+            [node, raw, '.'],
+            [node, raw, '..'],
+        ]);
+        expect(report.results.every((r) => r.verdict === 'skip')).toBe(true);
         expect(first(report).reason).toContain('ls {fixture}');
+    });
+
+    it('skips once, naming only the command, for the default probes', async () => {
+        const { report } = await probeJson([node], only);
+        expect(report.results).toHaveLength(1);
+        expect(first(report).invocation).toEqual([node]);
+        expect(first(report).verdict).toBe('skip');
     });
 
     it('reports a missing command as could-not-run', async () => {

@@ -138,15 +138,19 @@ export const controlCharsCheck: Check = {
     summary: 'prints control characters from file names raw to the terminal',
     async run(target, ctx) {
         if (target.fixtureDir === undefined) {
-            // Nothing to plant, so nothing to run: one line instead of a skip per probe.
-            const skip: ControlCharsResult = {
+            // Nothing to plant, so nothing to run. As in ctrl-c and sigterm, each probe
+            // the user named gets its own skip, and the defaults one line for the command.
+            const own = target.probes.filter((p) => p.own);
+            const invocations = own.length
+                ? own.map((p) => [target.command, ...p.args])
+                : [[target.command]];
+            return invocations.map((invocation): ControlCharsResult => ({
                 check: 'control-chars',
-                invocation: [target.command],
+                invocation,
                 ...judgeControlChars({ usesFixture: false }),
                 terminalRaw: [],
                 pipeRaw: [],
-            };
-            return [skip];
+            }));
         }
         // Only the probes with {fixture} in them list the hostile names.
         const dir = target.fixtureDir;
