@@ -30,8 +30,8 @@ The README and the other Markdown files use real headings, lists and tables, so 
 
 ## Known limitations
 
-- **Aligned columns.** The human report pads the invocation column with spaces to line the reasons up. A screen reader reads the padding as a pause, and with a long invocation the line may wrap. `--format markdown` gives a real table instead.
-- **Long evidence lines.** An evidence line can be up to 200 characters, wider than 80 columns.
+- **Aligned columns.** The human report pads the invocation column with spaces, up to 40 characters, to line the reasons up. A longer invocation gets a row of its own, with its reason on the next line. A screen reader reads the padding as a pause, and a long reason may still wrap. `--format markdown` gives a real table instead.
+- **Long evidence lines.** An evidence line can be up to 200 characters, wider than 80 columns. Longer evidence is cut at a word and ends with `... (--json has the rest)`.
 - **Fixed color choice.** The verdict colors (green, red, yellow, gray, magenta and cyan, from the terminal's palette) can't be changed. Set `NO_COLOR=1` to turn them off.
 - **Platforms.** cliprobe runs on macOS and Linux only. Windows isn't supported yet. Running cliprobe under WSL may work, but it isn't tested.
 
@@ -41,4 +41,4 @@ If something in cliprobe or its documentation is hard or impossible to use with 
 
 Barriers are triaged like bugs, and a fix that changes output follows the same [stability promise](https://github.com/KhaledSaeed18/cliprobe#stability) as any other change: the human report's wording and layout may change in a minor release, the JSON report only gains fields.
 
-This statement was last reviewed for cliprobe 1.2.0.
+This statement was last reviewed for cliprobe 1.4.4.

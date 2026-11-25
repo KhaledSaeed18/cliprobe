@@ -257,7 +257,7 @@ describe('cliprobe --output-file', () => {
             fixture('crash'),
         ]);
         expect(r.status).toBe(1);
-        expect(r.stdout).toMatch(/FAIL .*crashed when stdout was closed/);
+        expect(r.stdout).toMatch(/FAIL .*(?:\n +)?.*crashed when stdout was closed/);
         const xml = readFileSync(path, 'utf8');
         expect(XMLValidator.validate(xml)).toBe(true);
         expect(xml).toContain('<failure message="crashed when stdout was closed');

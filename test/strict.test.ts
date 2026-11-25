@@ -43,7 +43,7 @@ describe('--strict', () => {
         expect(plain.stdout).toMatch(/1 warned, 0 passed, 0 skipped\n$/);
         const strict = await cliprobe(['--strict', '--check', 'ctrl-c', '--', ...exitZero]);
         expect(strict.status).toBe(1);
-        expect(strict.stdout).toMatch(/WARN .*exited 0 after Ctrl-C/);
+        expect(strict.stdout).toMatch(/WARN .*(?:\n +)?.*exited 0 after Ctrl-C/);
         expect(strict.stdout).toMatch(/\(--strict: warnings fail\)\n$/);
     });
 

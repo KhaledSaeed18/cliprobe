@@ -102,7 +102,7 @@ describe('ctrl-c: fixtures', () => {
 
     it('shows the reason in human output', async () => {
         const r = await cliprobe(['--check', 'ctrl-c', '--', ...ctrlFixture('ignores')]);
-        expect(r.stdout).toMatch(/FAIL .*ignored Ctrl-C/);
+        expect(r.stdout).toMatch(/FAIL .*(?:\n +)?.*ignored Ctrl-C/);
     });
 });
 

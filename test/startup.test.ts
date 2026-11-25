@@ -64,7 +64,7 @@ describe('startup', () => {
 
     it('counts info results in the human summary', async () => {
         const r = await cliprobe(['--check', 'startup', '--', ...slow]);
-        expect(r.stdout).toMatch(/INFO .*median \d+ ms/);
+        expect(r.stdout).toMatch(/INFO .*(?:\n +)?.*median \d+ ms/);
         expect(r.stdout).toMatch(/, 1 info$/m);
     });
 });

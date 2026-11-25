@@ -211,7 +211,7 @@ In JUnit, each check is a test suite and each probe a test case: `FAIL` is a fai
 }
 ```
 
-`strict` says whether `--strict` was given (added in 1.1). Every result has the same five fields: `check`, `invocation` (the command and arguments that ran), `verdict` (`pass`, `fail`, `warn`, `skip`, `error` for could-not-run, or `info`), `reason` (a sentence for a person) and `details`, plus `evidence` when there is a line to quote. `details` holds the check's own measurements, such as exit codes, timings, the terminal modes left on or the processes left running; the schema describes each check's. Text from the program under test is escaped: control characters, line separators and bidi overrides appear as `\u` escapes, so the report can't drive a terminal when printed.
+`strict` says whether `--strict` was given (added in 1.1). Every result has the same five fields: `check`, `invocation` (the command and arguments that ran), `verdict` (`pass`, `fail`, `warn`, `skip`, `error` for could-not-run, or `info`), `reason` (a sentence for a person) and `details`, plus `evidence` when there is a line to quote. `details` holds the check's own measurements, such as exit codes, timings, the terminal modes left on or the processes left running; the schema describes each check's. Text from the program under test is escaped: control characters, line separators and bidi overrides appear as `\u` escapes, so the report can't drive a terminal when printed. The human report shows them as `\x1b`-style escapes and doubles a backslash the program printed, so `\\x1b` is text and `\x1b` a real escape character; it cuts evidence longer than 200 characters, which the JSON has in full.
 
 ## Stability
 
