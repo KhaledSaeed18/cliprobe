@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.5.0](https://github.com/KhaledSaeed18/cliprobe/compare/v1.4.4...v1.5.0) (2026-11-25)
+
+### Features
+
+* **pipe-escapes:** warn on the other escape sequences in a pipe ([a3e1bb6](https://github.com/KhaledSaeed18/cliprobe/commit/a3e1bb672054d395f3c5e88fe055d3a39e7ef585)), closes [#42](https://github.com/KhaledSaeed18/cliprobe/issues/42)
+
 ## [1.4.4](https://github.com/KhaledSaeed18/cliprobe/compare/v1.4.3...v1.4.4) (2026-11-25)
 
 ### Bug Fixes
