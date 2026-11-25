@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.3](https://github.com/KhaledSaeed18/cliprobe/compare/v1.4.2...v1.4.3) (2026-11-25)
+
+### Bug Fixes
+
+* **pty:** name the package that has script(1) on Fedora ([0dc839c](https://github.com/KhaledSaeed18/cliprobe/commit/0dc839c5e5d31c2f681b7ec78b309c55c201bd32)), closes [#36](https://github.com/KhaledSaeed18/cliprobe/issues/36)
+* say when a skipped probe exited with a failure code ([cc78446](https://github.com/KhaledSaeed18/cliprobe/commit/cc78446ee4a4257c1da1c8e86e6c2197310f9c79)), closes [#29](https://github.com/KhaledSaeed18/cliprobe/issues/29)
+
 ## [1.4.2](https://github.com/KhaledSaeed18/cliprobe/compare/v1.4.1...v1.4.2) (2026-11-22)
 
 ### Bug Fixes
