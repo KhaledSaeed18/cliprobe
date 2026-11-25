@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { UNKNOWN_FLAG } from '../src/checks/baseline.ts';
 import { parseArgs } from '../src/cli/args.ts';
 import { shellJoin, shellSplit } from '../src/core/quote.ts';
-import { cliprobe, fixture, probeJson } from './helpers/cli.ts';
+import { cliprobe, first, fixture, probeJson } from './helpers/cli.ts';
 
 const node = process.execPath;
 const ESC = String.fromCharCode(0x1b);
@@ -142,5 +142,48 @@ describe('--probe', () => {
         expect(r.status).toBe(2);
         expect(r.stderr).toContain(`--probe '"\\x1b[2J' has an unclosed double quote`);
         expect(r.stderr).not.toContain(ESC);
+    });
+});
+
+describe('a probe that fails before doing anything (#29)', () => {
+    it('says so in the SKIP, with the exit code and the error line', async () => {
+        // The documented pitfall: with `node <script>`, --probe watch runs "node watch".
+        const { report } = await probeJson([node, fixture('argv')], {
+            checks: ['closed-pipe', 'ctrl-c', 'sigterm'],
+            probes: ['watch'],
+        });
+        const watch = report.results.filter((r) => shown(r.invocation) === 'watch');
+        expect(watch.map((r) => r.check)).toEqual(['closed-pipe', 'ctrl-c', 'sigterm']);
+        for (const r of watch) {
+            expect(r.verdict).toBe('skip');
+            expect(r.reason).toMatch(/; it exited 1, so the probe may not have run as intended$/);
+            expect(r.evidence).toMatch(/^stderr: Error: Cannot find module '.*watch'/);
+        }
+    });
+
+    it('gives the exit code alone when the probe printed nothing at all', async () => {
+        const { report } = await probeJson(['sh'], {
+            checks: ['closed-pipe', 'color', 'pipe-escapes', 'control-chars'],
+            probes: ['-c "exit 3" {fixture}'],
+        });
+        const own = report.results.filter((r) => r.invocation.length > 2);
+        expect(own.map((r) => r.check)).toEqual([
+            'closed-pipe',
+            'color',
+            'pipe-escapes',
+            'control-chars',
+        ]);
+        for (const r of own) {
+            if (r.reason.startsWith('no terminal')) continue; // no script(1) here
+            expect(r.verdict).toBe('skip');
+            expect(r.reason).toMatch(/; it exited 3, so the probe may not have run as intended$/);
+            expect(r.evidence).toBeUndefined();
+        }
+    });
+
+    it('leaves a SKIP alone when the probe exited 0', async () => {
+        const { report } = await probeJson([node, fixture('argv')], { checks: ['ctrl-c'] });
+        expect(first(report).verdict).toBe('skip');
+        expect(first(report).reason).not.toMatch(/exited/);
     });
 });

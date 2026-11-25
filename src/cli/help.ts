@@ -64,7 +64,9 @@ Options:
                      program, a server) instead of --version and --help
   --probe <args>     Also probe "<command> <args>"; repeat it for several. Split
                      like a shell command line: quotes and backslashes work,
-                     variables and wildcards are not expanded
+                     variables and wildcards are not expanded. The args after
+                     <command> are not kept, so name the script in each probe:
+                     cliprobe --probe "./cli.js watch" -- node ./cli.js
   --check <name>     Run only this check; repeat it or use commas for several
   --skip <name>      Leave this check out; repeat it or use commas for several
   --strict           Exit 1 on a warning too, not only on a failure

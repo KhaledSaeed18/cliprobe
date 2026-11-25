@@ -1,3 +1,4 @@
+import { noteFailedExit } from '../core/evidence.ts';
 import { HOSTILE_NAMES, type HostileName, PLAIN_NAME } from '../core/fixture.ts';
 import { ptySupport, runPty, type PtyResult } from '../core/pty.ts';
 import { markLongRunning, probeTimeout } from '../core/long-running.ts';
@@ -60,10 +61,11 @@ export function judgeControlChars(runs: ControlCharsRuns): Judgement {
         };
     }
     if (!tty.output.includes(PLAIN_NAME)) {
-        return {
+        const skip: Judgement = {
             verdict: 'skip',
             reason: 'did not print the file names in {fixture}, so there was nothing to escape',
         };
+        return pipe ? noteFailedExit(skip, pipe) : skip;
     }
     const raw = rawNames(tty.output);
     const failing = raw.filter((h) => h.severity === 'fail');

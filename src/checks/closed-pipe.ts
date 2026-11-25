@@ -1,4 +1,4 @@
-import { crashEvidence, ERROR_RE } from '../core/evidence.ts';
+import { crashEvidence, noteFailedExit, ERROR_RE } from '../core/evidence.ts';
 import {
     LONG_RUN_WINDOW_MS,
     markLongRunning,
@@ -65,10 +65,13 @@ export function judge(base: RunResult, closed: RunResult): Judgement {
     if (base.spawnError) return { verdict: 'error', reason: `could not start: ${base.spawnError}` };
     if (base.timedOut) return judgeLongRunning(base, closed);
     if (base.stdoutBytes === 0) {
-        return {
-            verdict: 'skip',
-            reason: 'wrote nothing to stdout, so a closed stdout is never touched',
-        };
+        return noteFailedExit(
+            {
+                verdict: 'skip',
+                reason: 'wrote nothing to stdout, so a closed stdout is never touched',
+            },
+            base
+        );
     }
     if (closed.timedOut) return { verdict: 'fail', reason: 'hung after stdout was closed' };
     if (closed.signal === 'SIGPIPE') {
