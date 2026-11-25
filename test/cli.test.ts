@@ -1,5 +1,6 @@
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { cliprobe, fixture, probeJson, type Report } from './helpers/cli.ts';
+import { cliprobe, fixture, probeJson, ROOT, type Report } from './helpers/cli.ts';
 
 describe('cli', () => {
     it('escapes control characters from the target in human output', async () => {
@@ -22,17 +23,15 @@ describe('cli', () => {
     });
 
     it('lines up evidence under the reason when {fixture} is in the args', async () => {
-        const r = await cliprobe([
-            '--check',
-            'control-chars',
-            '--',
-            process.execPath,
-            fixture('control-chars/raw'),
-            '{fixture}',
-        ]);
+        // A command short enough for the invocation column, so the reason shares its row.
+        const r = await cliprobe(
+            ['--check', 'control-chars', '--', 'node', 'control-chars/raw.mjs', '{fixture}'],
+            join(ROOT, 'test/fixtures')
+        );
         const lines = r.stdout.split('\n');
         const row = lines.findIndex((l) => l.startsWith('  FAIL'));
         const reasonAt = lines[row]!.indexOf('sent escape');
+        expect(reasonAt).toBeGreaterThan(0);
         expect(lines[row + 1]!.search(/\S/)).toBe(reasonAt);
         expect(r.stdout).not.toMatch(/cliprobe-fixture-/);
     });

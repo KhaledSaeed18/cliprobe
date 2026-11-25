@@ -111,7 +111,7 @@ describe('sigterm: fixtures', () => {
 
     it('shows the reason in human output', async () => {
         const r = await cliprobe(['--check', 'sigterm', '--', ...termFixture('orphans')]);
-        expect(r.stdout).toMatch(/WARN .*left 1 process running/);
+        expect(r.stdout).toMatch(/WARN .*(?:\n +)?.*left 1 process running/);
     });
 });
 

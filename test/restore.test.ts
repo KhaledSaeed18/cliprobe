@@ -3,6 +3,8 @@ import { judgeRestore } from '../src/checks/restore.ts';
 import type { PtyResult } from '../src/core/pty.ts';
 import { cliprobe, fixture, probeJson, runCheck } from './helpers/cli.ts';
 
+const ESC = String.fromCharCode(0x1b);
+
 const node = process.execPath;
 const only = { checks: ['restore'] };
 
@@ -48,7 +50,7 @@ describe('restore: fixtures', () => {
     it('quotes each sequence that was never undone, with its line', async () => {
         const [result] = await probe(restoreFixture('fullscreen-leaks'));
         expect(result?.evidence).toBe(
-            'ESC[?1049h on line 1, never undone; ESC[?1000;1006h on line 1, never undone'
+            `${ESC}[?1049h on line 1, never undone; ${ESC}[?1000;1006h on line 1, never undone`
         );
         expect(result?.details.interrupted).toBe(true);
         expect(result?.details.openModes.map((m) => m.label)).toEqual([
@@ -88,8 +90,10 @@ describe('restore: real tools', () => {
 
     it('prints the warning in the human report', async () => {
         const r = await cliprobe(['--check', 'restore', '--', ...restoreFixture('spinner-leaks')]);
-        expect(r.stdout).toMatch(/restore.*left the terminal with hidden cursor after Ctrl-C/);
-        expect(r.stdout).toContain('ESC[?25l on line 1, never undone');
+        expect(r.stdout).toMatch(
+            /WARN .*spinner-leaks.*\n +left the terminal with hidden cursor after Ctrl-C\n/
+        );
+        expect(r.stdout).toContain('\\x1b[?25l on line 1, never undone');
     });
 });
 

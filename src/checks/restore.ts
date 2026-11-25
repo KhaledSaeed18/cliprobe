@@ -24,8 +24,6 @@ const WRAPPER_EXEC_FAILED = /^sh: [^\n]*(cannot execute|exec format error)/i;
 /** What the Ctrl-C key sends to a terminal. */
 const CTRL_C_KEY = '\x03';
 
-const showSequence = (sequence: string): string => sequence.replaceAll('\x1b', 'ESC');
-
 export function judgeRestore(r: PtyResult): Judgement {
     if (r.spawnError) return { verdict: 'error', reason: `could not start: ${r.spawnError}` };
     const interrupted = r.inputSentMs !== undefined;
@@ -49,9 +47,7 @@ export function judgeRestore(r: PtyResult): Judgement {
         return {
             verdict: 'warn',
             reason: `left the terminal with ${listLabels(open)} ${when}`,
-            evidence: open
-                .map((m) => `${showSequence(m.sequence)} on line ${m.line}, never undone`)
-                .join('; '),
+            evidence: open.map((m) => `${m.sequence} on line ${m.line}, never undone`).join('; '),
         };
     }
     return { verdict: 'pass', reason: `left no terminal mode switched on ${when}` };
