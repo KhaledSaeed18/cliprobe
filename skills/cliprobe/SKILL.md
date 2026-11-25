@@ -94,6 +94,7 @@ A failed check exits 1, so the step fails. Pin the major version and include the
 - **Everything `SKIP`ped in ctrl-c and sigterm:** no probe kept running for a second. Add a `--probe` for a watch or serve command.
 - **`control-chars` skipped:** no probe contained `{fixture}`, or the probe didn't print the names.
 - **`ERROR`:** the probe could not start or crashed before any check could judge it; the reason says why.
-- **The terminal checks can't run:** they need `script`, which macOS and most Linux distributions ship; on Alpine, install `util-linux-misc`.
-- **It behaves differently than in your shell:** cliprobe runs the program with a minimal environment (`PATH`, `LANG`, `TERM`, `CI`, a temporary `HOME` and `TMPDIR`) and no shell, like a fresh CI runner.
+- **A `SKIP` that adds "it exited N, so the probe may not have run as intended":** the probe failed before doing anything; the evidence quotes its error line. Fix the probe's arguments. With `-- node ./dist/cli.js`, a `--probe` must name the script too (see section 2).
+- **The terminal checks can't run:** they need `script`, which macOS and most Linux distributions ship. If it's missing, install `bsdutils` on Debian and Ubuntu, `util-linux-script` on Fedora, `util-linux-misc` on Alpine.
+- **It behaves differently than in your shell:** cliprobe runs the program with no shell and a minimal environment: `PATH`, `LANG`, a temporary `HOME` and `TMPDIR`, `NO_UPDATE_NOTIFIER=1`, and `TERM=dumb` with `CI=1` except in color, pipe-escapes and control-chars, which use `TERM=xterm-256color` and no `CI`. `LC_ALL` and other `LC_*` variables don't reach it. The README's "The probe's environment" has the full table.
 - Other options: `cliprobe --help` lists them all, and `--check startup,baseline` adds two info checks (startup time, and conventions for `--version`, `--help` and unknown flags).
