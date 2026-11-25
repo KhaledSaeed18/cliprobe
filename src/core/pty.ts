@@ -85,14 +85,50 @@ export function ptyArgs(
     command: string,
     args: readonly string[],
     cols: number = PTY_COLS,
-    rows: number = PTY_ROWS
+    rows: number = PTY_ROWS,
+    /** Where to write `stty -a` before and after the program (`<path>.before`, `.after`). */
+    settingsFile?: string
 ): string[] {
-    const setup = `echo $$ > "$1"; shift; stty cols ${cols} rows ${rows} 2>/dev/null; exec "$@"`;
-    const argv = [pidFile, command, ...args];
+    const size = `stty cols ${cols} rows ${rows} 2>/dev/null`;
+    // To read the settings the program left, the wrapper outlives it instead of exec'ing
+    // it. It catches SIGINT with a handler, never ignores it, so the program starts with
+    // the default action and still dies by a Ctrl-C the terminal turns into SIGINT.
+    const setup =
+        settingsFile === undefined
+            ? `echo $$ > "$1"; shift; ${size}; exec "$@"`
+            : `echo $$ > "$1"; s=$2; shift 2; ${size}; stty -a > "$s.before" 2>/dev/null; trap true INT; "$@"; c=$?; stty -a > "$s.after" 2>/dev/null; exit $c`;
+    const argv =
+        settingsFile === undefined
+            ? [pidFile, command, ...args]
+            : [pidFile, settingsFile, command, ...args];
     if (flavor === 'bsd') return ['-q', '/dev/null', '/bin/sh', '-c', setup, 'sh', ...argv];
     const line = `exec /bin/sh -c ${shellQuote(setup)} sh ${argv.map(shellQuote).join(' ')}`;
     // -e: exit with the program's status. -c runs the line with SHELL, set to /bin/sh below.
     return ['-qec', line, '/dev/null'];
+}
+
+/** The terminal settings that leave a shell unusable when a program exits with them off. */
+const WATCHED_SETTINGS: readonly string[] = [
+    'icanon',
+    'echo',
+    'isig',
+    'iexten',
+    'opost',
+    'onlcr',
+    'icrnl',
+    'ixon',
+];
+
+/**
+ * The watched settings that were on in `before` and are off in `after`, both the
+ * output of `stty -a`, where BSD and GNU stty alike print a setting that is off as
+ * `-name`. Compared with the terminal as the program found it, not fixed values.
+ */
+export function settingsOff(before: string, after: string): string[] {
+    const words = (text: string): Set<string> => new Set(text.split(/[\s;]+/));
+    const was = words(before);
+    const now = words(after);
+    return WATCHED_SETTINGS.filter((name) => was.has(name) && now.has(`-${name}`));
 }
 
 /** BSD script echoes the EOF it forwards from /dev/null as "^D" and two backspaces. */
@@ -114,6 +150,8 @@ export interface PtyOptions {
      * a terminal that stays open, instead of one that reads a single EOF.
      */
     input?: { data: string; afterMs: number };
+    /** Read the terminal's settings before and after the program, for settingsOff. */
+    settings?: boolean;
 }
 
 export interface PtyResult {
@@ -134,6 +172,12 @@ export interface PtyResult {
     truncated: boolean;
     /** When `options.input` was typed, in milliseconds after start; absent if the program exited first. */
     inputSentMs?: number;
+    /**
+     * With `options.settings`: the watched terminal settings the program switched off
+     * and left off (see settingsOff). Absent when they couldn't be read, as when the
+     * program was still running at the timeout.
+     */
+    settingsOff?: string[];
 }
 
 /**
@@ -146,7 +190,7 @@ export interface PtyResult {
 export async function runPty(
     command: string,
     args: readonly string[],
-    { timeout, env = {}, input }: PtyOptions
+    { timeout, env = {}, input, settings = false }: PtyOptions
 ): Promise<PtyResult> {
     const support = ptySupport();
     if (!support.ok) throw new Error(`no PTY: ${support.reason}`);
@@ -156,7 +200,8 @@ export async function runPty(
     const unregister = onInterrupt(() => rmSync(dir, { recursive: true, force: true }));
     const pidFile = join(dir, 'pid');
     let launcher = 'script';
-    let argv = ptyArgs(support.flavor, pidFile, command, args);
+    const settingsFile = settings ? join(dir, 'stty') : undefined;
+    let argv = ptyArgs(support.flavor, pidFile, command, args, PTY_COLS, PTY_ROWS, settingsFile);
     let keyboard: number | undefined;
     let inputSentMs: number | undefined;
     let typeTimer: NodeJS.Timeout | undefined;
@@ -212,6 +257,7 @@ export async function runPty(
             scriptStderr: result.stderr,
             truncated: result.stdoutBytes > result.stdout.length,
             ...(inputSentMs === undefined ? {} : { inputSentMs }),
+            ...readSettings(settingsFile, result.timedOut),
         };
     } finally {
         clearTimeout(typeTimer);
@@ -219,6 +265,21 @@ export async function runPty(
         closeKeyboard();
         unregister();
         rmSync(dir, { recursive: true, force: true });
+    }
+}
+
+/** The settings the program left off, when the wrapper could read them after it. */
+function readSettings(file: string | undefined, timedOut: boolean): { settingsOff?: string[] } {
+    if (file === undefined || timedOut) return {};
+    try {
+        return {
+            settingsOff: settingsOff(
+                readFileSync(`${file}.before`, 'utf8'),
+                readFileSync(`${file}.after`, 'utf8')
+            ),
+        };
+    } catch {
+        return {}; // the wrapper was killed before it could read them
     }
 }
 
@@ -236,7 +297,8 @@ function programGroup(pidFile: string): number | undefined {
 
 /**
  * Whether the program under the PTY has started, is running, or has exited.
- * Asks about the program itself, which script(1) reaps, not its group: a child
+ * Asks about the program itself (or the wrapper that runs it and reads the
+ * settings it left, which ends right after it), which script(1) reaps, not its group: a child
  * it left behind can stay a zombie for good where nothing reaps orphans, as in
  * a container without an init process.
  */
