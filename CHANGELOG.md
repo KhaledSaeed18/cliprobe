@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/KhaledSaeed18/cliprobe/compare/v1.5.1...v1.6.0) (2026-11-25)
+
+### Features
+
+* **pty:** read the terminal settings a program leaves behind ([5e7f317](https://github.com/KhaledSaeed18/cliprobe/commit/5e7f317f636c833d57d45b1dbad17362136dfc67))
+* **restore:** warn when a program leaves the terminal in raw mode ([67abedb](https://github.com/KhaledSaeed18/cliprobe/commit/67abedbd4ac85fdd00d139b991d4defd2155f48f)), closes [#35](https://github.com/KhaledSaeed18/cliprobe/issues/35)
+
 ## [1.5.1](https://github.com/KhaledSaeed18/cliprobe/compare/v1.5.0...v1.5.1) (2026-11-25)
 
 ### Bug Fixes
