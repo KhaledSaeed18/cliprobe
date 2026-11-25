@@ -58,8 +58,8 @@ sigterm
   SKIP   tsx            needs a probe that keeps running, such as a watch or serve command (--probe), or --bare
 
 restore
-  PASS   tsx --version  left no terminal mode switched on when it exited
-  PASS   tsx --help     left no terminal mode switched on when it exited
+  PASS   tsx --version  left no terminal mode switched on and the terminal's settings as it found them when it exited
+  PASS   tsx --help     left no terminal mode switched on and the terminal's settings as it found them when it exited
 
 control-chars
   SKIP   tsx            no {fixture} in the arguments; add a probe that takes a path, e.g. --probe "ls {fixture}"
@@ -320,13 +320,13 @@ It only warns for now. Across 44 watch modes, dev servers and long tasks run off
 
 ### restore
 
-Spinners, prompts and full-screen programs switch terminal modes on: they hide the cursor, open the alternate screen, turn on mouse reporting or bracketed paste, or turn line wrapping off. If they don't switch them back off on the way out, the shell they return to is broken until you run `reset`: no cursor, a blank screen, mouse clicks typed as junk, long lines cut off at the edge. cliprobe runs the command under a terminal and, for probes you write, types Ctrl-C after 1 second, as a person would. The keystroke goes through the terminal, so a program in raw mode gets it as a key rather than a signal, just as it would from a keyboard. `--version` and `--help` aren't interrupted; they're judged as they exit. Results:
+Spinners, prompts and full-screen programs switch terminal modes on: they hide the cursor, open the alternate screen, turn on mouse reporting or bracketed paste, or turn line wrapping off. If they don't switch them back off on the way out, the shell they return to is broken until you run `reset`: no cursor, a blank screen, mouse clicks typed as junk, long lines cut off at the edge. Prompts and full-screen programs also put the terminal in raw mode (echo and line editing off, from `stty`), and one that exits without switching it back leaves a shell that shows nothing you type. cliprobe runs the command under a terminal and, for probes you write, types Ctrl-C after 1 second, as a person would. The keystroke goes through the terminal, so a program in raw mode gets it as a key rather than a signal, just as it would from a keyboard. `--version` and `--help` aren't interrupted; they're judged as they exit. Since 1.6, cliprobe also reads the terminal's settings with `stty -a` just before the program starts and just after it exits, and compares them: line editing (`icanon`), `echo`, `isig`, `iexten`, output processing (`opost`, `onlcr`), `icrnl` and `ixon`. Results:
 
-| Verdict | Meaning                                                                                                                     |
-| ------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `PASS`  | Left no mode switched on, either because it never switched one or because it switched each back off (or reset the terminal) |
-| `WARN`  | Left one or more on; the evidence quotes each sequence that was never undone and its line                                   |
-| `SKIP`  | Still running 3 seconds after Ctrl-C (REPLs quit on a second one), more than 1 MiB of output, or no usable `script` command |
+| Verdict | Meaning                                                                                                                                                                                                   |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PASS`  | Left no mode switched on, either because it never switched one or because it switched each back off (or reset the terminal), and left the terminal's settings as it found them                            |
+| `WARN`  | Left one or more on, or switched a setting off and left it off (raw mode); the evidence quotes each sequence that was never undone and its line, and the settings as `stty` flags such as `-icanon -echo` |
+| `SKIP`  | Still running 3 seconds after Ctrl-C (REPLs quit on a second one), more than 1 MiB of output, or no usable `script` command                                                                               |
 
 It only warns: a terminal left in the wrong mode is a nuisance you can undo, not a failure of the program's job. Across the top 100 npm CLIs, their watch modes and servers, and popular prompt and spinner libraries (about 300 runs), nothing warned falsely, and one tool really did break the terminal: `taze -I` turns line wrapping off for its progress bars and leaves it off after Ctrl-C.
 
@@ -419,6 +419,8 @@ process.stdout.write('\x1b[?25l'); // hide the cursor
 process.on('exit', () => process.stdout.write('\x1b[?25h')); // and always show it again
 process.once('SIGINT', () => process.exit(130));
 ```
+
+Node switches raw mode (`setRawMode`) back off on its own as it exits, but not when it is killed. In other languages, restore the terminal's settings yourself: in Python, save `termios.tcgetattr(fd)` and put it back with `tcsetattr` in a `finally`, instead of calling `os._exit()` while the terminal is raw.
 
 **control-chars:** escape names (and any other text you didn't write) before printing them for a person. `JSON.stringify` alone isn't enough: it leaves C1 controls and bidi overrides raw.
 

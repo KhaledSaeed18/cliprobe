@@ -9,10 +9,18 @@ export interface RestoreResult extends Result {
     interrupted: boolean;
     /** The modes it left switched on, with the sequence that switched each on. */
     openModes: OpenMode[];
+    /**
+     * The terminal settings (stty) it switched off and left off, such as icanon and echo
+     * for raw mode; null when they couldn't be read. Added in 1.6.
+     */
+    settingsOff: string[] | null;
 }
 
 function listLabels(modes: readonly OpenMode[]): string {
-    const labels = modes.map((m) => m.label);
+    return listWords(modes.map((m) => m.label));
+}
+
+function listWords(labels: readonly string[]): string {
     return labels.length <= 1
         ? (labels[0] ?? '')
         : `${labels.slice(0, -1).join(', ')} and ${labels.at(-1) ?? ''}`;
@@ -43,14 +51,32 @@ export function judgeRestore(r: PtyResult): Judgement {
     }
     const when = interrupted ? 'after Ctrl-C' : 'when it exited';
     const open = findOpenModes(r.output);
-    if (open.length > 0) {
+    const off = r.settingsOff ?? [];
+    if (open.length > 0 || off.length > 0) {
+        const parts = open.length > 0 ? [`with ${listLabels(open)}`] : [];
+        const evidence = open.map((m) => `${m.sequence} on line ${m.line}, never undone`);
+        if (off.length > 0) {
+            // Line editing and echo both off is what tty.setraw() and raw-mode libraries do.
+            const raw = off.includes('icanon') && off.includes('echo');
+            const flags = off.map((name) => `-${name}`);
+            parts.push(
+                raw
+                    ? `in raw mode (${listWords(off)} off)`
+                    : `with ${listWords(off)} off (${flags.join(' ')})`
+            );
+            evidence.push(`stty settings never restored: ${flags.join(' ')}`);
+        }
+        const fix = off.length > 0 ? '; `stty sane` undoes it' : '';
         return {
             verdict: 'warn',
-            reason: `left the terminal with ${listLabels(open)} ${when}`,
-            evidence: open.map((m) => `${m.sequence} on line ${m.line}, never undone`).join('; '),
+            reason: `left the terminal ${parts.join(' and ')} ${when}${fix}`,
+            evidence: evidence.join('; '),
         };
     }
-    return { verdict: 'pass', reason: `left no terminal mode switched on ${when}` };
+    // Without the settings (no reading), only the escape-sequence modes were checked.
+    const settings =
+        r.settingsOff === undefined ? '' : " and the terminal's settings as it found them";
+    return { verdict: 'pass', reason: `left no terminal mode switched on${settings} ${when}` };
 }
 
 export async function restore(
@@ -63,10 +89,13 @@ export async function restore(
         // Typed, not signalled: a program that turned off the terminal's Ctrl-C (raw
         // mode, as full-screen programs and prompts do) gets it as a key, as it would.
         ...(interrupt ? { input: { data: CTRL_C_KEY, afterMs: CTRL_C_DELAY_MS } } : {}),
+        // The stty settings it leaves, such as raw mode, which no escape sequence shows.
+        settings: true,
     });
     // Under a PTY, a file this system can't run is only the complaint of the shell
-    // that execs it ("sh: ./x: cannot execute binary file"), and BSD script reports
-    // its exit as 1, so either sign counts, on a file no shell would run.
+    // that runs it ("sh: ./x: cannot execute binary file"), with exit 126 or 127, or 1
+    // from BSD script when the shell execs it, so either sign counts, on a file no
+    // shell would run.
     const notRun =
         r.spawnError === undefined &&
         (r.exitCode === 126 || r.exitCode === 127 || WRAPPER_EXEC_FAILED.test(r.output)) &&
@@ -82,6 +111,7 @@ export async function restore(
         ...judgement,
         interrupted: r.inputSentMs !== undefined,
         openModes: judgement.verdict === 'warn' ? findOpenModes(r.output) : [],
+        settingsOff: notRun ? null : (r.settingsOff ?? null),
     };
 }
 
@@ -107,6 +137,7 @@ export const restoreCheck: Check = {
                     ...notRun,
                     interrupted: false,
                     openModes: [],
+                    settingsOff: null,
                 };
                 results.push(result);
                 continue;
