@@ -61,7 +61,7 @@ process.once('SIGTERM', () => {
 
 A shell wrapper should `exec` its last command (`sh -c 'exec node server.js'`), so the signal goes straight to it instead of to a shell that dies and leaves it running.
 
-**restore:** switch every mode back off on the way out, including after Ctrl-C. Node runs `exit` handlers on `process.exit()` but not when a signal kills it, so turn SIGINT into an exit, and in raw mode, where Ctrl-C arrives as the key `\x03`, exit on that key too:
+**restore:** switch every mode back off on the way out, including after Ctrl-C, and leave the terminal's settings (raw mode, echo) as you found them; Node does that for `setRawMode` unless it is killed. Node runs `exit` handlers on `process.exit()` but not when a signal kills it, so turn SIGINT into an exit, and in raw mode, where Ctrl-C arrives as the key `\x03`, exit on that key too:
 
 ```js
 process.stdout.write('\x1b[?25l'); // hide the cursor

@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { judgeRestore } from '../src/checks/restore.ts';
 import type { PtyResult } from '../src/core/pty.ts';
@@ -6,6 +7,14 @@ import { cliprobe, fixture, probeJson, runCheck } from './helpers/cli.ts';
 const ESC = String.fromCharCode(0x1b);
 
 const node = process.execPath;
+const hasPython = ((): boolean => {
+    try {
+        execFileSync('python3', ['-c', '0'], { stdio: 'ignore' });
+        return true;
+    } catch {
+        return false;
+    }
+})();
 const only = { checks: ['restore'] };
 
 interface RestoreJson {
@@ -15,6 +24,7 @@ interface RestoreJson {
     details: {
         interrupted: boolean;
         openModes: { label: string; sequence: string; line: number }[];
+        settingsOff?: string[] | null;
     };
 }
 
@@ -25,9 +35,72 @@ async function probe(command: readonly string[]): Promise<RestoreJson[]> {
 
 const restoreFixture = (name: string): string[] => [node, fixture(`restore/${name}`)];
 
+describe('restore: terminal settings (#35)', () => {
+    it('warns when a program leaves the terminal in raw mode', async () => {
+        const [result] = await probe(restoreFixture('raw-killed'));
+        expect(result?.verdict).toBe('warn');
+        expect(result?.reason).toMatch(
+            /^left the terminal in raw mode \(.*icanon.*echo.* off\) after Ctrl-C; `stty sane` undoes it$/
+        );
+        expect(result?.details.settingsOff).toEqual(expect.arrayContaining(['icanon', 'echo']));
+        expect(result?.evidence).toMatch(/^stty settings never restored: -icanon /);
+    });
+
+    it('warns for one setting left off, without calling it raw mode', async () => {
+        const [result] = await probe(['sh', '-c', 'stty -echo']);
+        expect(result?.verdict).toBe('warn');
+        expect(result?.reason).toBe(
+            'left the terminal with echo off (-echo) when it exited; `stty sane` undoes it'
+        );
+        expect(result?.details.settingsOff).toEqual(['echo']);
+    });
+
+    it('names modes and settings together', () => {
+        const r: PtyResult = {
+            output: `${ESC}[?25l`,
+            exitCode: 0,
+            timedOut: false,
+            scriptStderr: '',
+            truncated: false,
+            settingsOff: ['echo'],
+        };
+        expect(judgeRestore(r)).toEqual({
+            verdict: 'warn',
+            reason: 'left the terminal with hidden cursor and with echo off (-echo) when it exited; `stty sane` undoes it',
+            evidence: `${ESC}[?25l on line 1, never undone; stty settings never restored: -echo`,
+        });
+    });
+
+    it.each(['spinner-restores', 'raw-key-restores', 'plain'])(
+        'reports no settings left off for %s',
+        async (name) => {
+            const [result] = await probe(restoreFixture(name));
+            expect(result?.verdict).toBe('pass');
+            expect(result?.reason).toBe(
+                "left no terminal mode switched on and the terminal's settings as it found them after Ctrl-C"
+            );
+            expect(result?.details.settingsOff).toEqual([]);
+        }
+    );
+
+    it.skipIf(!hasPython)('warns for the Python program from the issue', async () => {
+        const script =
+            'import tty,sys,os\ntty.setraw(0)\nprint("raw now\\r", flush=True)\nwhile os.read(0,1) != b"\\x03": pass\nos._exit(130)';
+        const [result] = await probe(['python3', '-c', script]);
+        expect(result?.verdict).toBe('warn');
+        expect(result?.details.settingsOff).toEqual(
+            expect.arrayContaining(['icanon', 'echo', 'opost'])
+        );
+    });
+});
+
 describe('restore: fixtures', () => {
     it.each([
-        ['spinner-restores', 'pass', /left no terminal mode switched on after Ctrl-C/],
+        [
+            'spinner-restores',
+            'pass',
+            /left no terminal mode switched on and the terminal's settings as it found them after Ctrl-C/,
+        ],
         ['fullscreen-restores', 'pass', /after Ctrl-C/],
         ['raw-key-restores', 'pass', /after Ctrl-C/],
         ['resets', 'pass', /after Ctrl-C/],

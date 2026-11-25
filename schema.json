@@ -532,6 +532,23 @@
                     "type": "boolean",
                     "description": "Whether Ctrl-C was typed; false when the program exited first."
                 },
+                "settingsOff": {
+                    "type": ["array", "null"],
+                    "description": "The terminal settings (stty) it switched off and left off, such as icanon and echo for raw mode; null when they could not be read. Added in 1.6.",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "icanon",
+                            "echo",
+                            "isig",
+                            "iexten",
+                            "opost",
+                            "onlcr",
+                            "icrnl",
+                            "ixon"
+                        ]
+                    }
+                },
                 "openModes": {
                     "type": "array",
                     "description": "The terminal modes it left switched on.",
