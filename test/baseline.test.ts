@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { UNKNOWN_FLAG } from '../src/checks/baseline.ts';
+import { describeHelp, UNKNOWN_FLAG } from '../src/checks/baseline.ts';
+import type { RunResult } from '../src/core/run.ts';
 import { cliprobe, fixture, probeJson, runCheck } from './helpers/cli.ts';
 
 const node = process.execPath;
@@ -84,5 +85,19 @@ describe('baseline', () => {
         const results = await runCheck('baseline', ['cliprobe-no-such-command-xyz']);
         expect(results.length).toBeGreaterThan(0);
         expect(results.every((r) => r.verdict === 'error')).toBe(true);
+    });
+});
+
+describe('describeHelp', () => {
+    const help = (stdout: string): RunResult =>
+        ({ stdout: Buffer.from(stdout), stderr: '', exitCode: 0, signal: null }) as RunResult;
+
+    it('counts one line as a line', () => {
+        expect(describeHelp(help('usage: tool\n')).reason).toBe(
+            'printed 1 line to stdout and exited 0'
+        );
+        expect(describeHelp(help('usage: tool\n  -h\n')).reason).toBe(
+            'printed 2 lines to stdout and exited 0'
+        );
     });
 });
