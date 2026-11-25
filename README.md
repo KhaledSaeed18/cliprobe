@@ -293,14 +293,16 @@ In the census of the top 100 npm CLIs, 9 of 238 `--help` and `--version` runs fa
 
 cliprobe lets the command run for 1 second, then sends SIGINT to its process group, which is what a terminal does when you press Ctrl-C, and gives it 3 seconds to exit. stdin is left open, as a terminal leaves it, so a server that stops at the end of stdin (`esbuild --serve`) keeps running until the Ctrl-C. Results:
 
-| Verdict | Meaning                                                                                                                                                            |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `PASS`  | Stopped by SIGINT, exited 130 (the convention), or exited with another failure code                                                                                |
-| `FAIL`  | Still running 3 seconds later, or printed a stack trace or traceback after the Ctrl-C                                                                              |
-| `WARN`  | Exited 0, so a script or an agent can't tell the work was interrupted, or exited but left processes running that ignored the Ctrl-C (the evidence names the first) |
-| `SKIP`  | Finished before the Ctrl-C, as `--version` and `--help` do: probe a command that keeps running                                                                     |
+| Verdict | Meaning                                                                                                                                                                                                  |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PASS`  | Stopped by SIGINT, exited 130 (the convention), or exited with another failure code                                                                                                                      |
+| `FAIL`  | Still running 3 seconds later, or printed a stack trace or traceback after the Ctrl-C                                                                                                                    |
+| `WARN`  | Exited 0, so a script or an agent can't tell the work was interrupted, or exited but left processes running that ignored the Ctrl-C (the evidence names the first)                                       |
+| `SKIP`  | Finished before the Ctrl-C, as `--version` and `--help` do: probe a command that keeps running. With `--bare`, also a command still running after the Ctrl-C that never printed anything, as a REPL does |
 
 A stack trace printed before the Ctrl-C doesn't count. Python's default `KeyboardInterrupt` traceback is the classic failure here, so `python3 -c 'import time; time.sleep(30)'` fails. Across 42 watch modes, dev servers and long tasks run offline (vite, webpack, tsc, jest, Next.js, Nuxt, Astro, wrangler, nodemon and more), every one stopped within 60 ms of the Ctrl-C, whether it came after 1, 3 or 6 seconds, so the timing rarely matters. 13 of them exit 0 on purpose, among them `tsc --watch`, webpack, `next dev` and `nuxt dev`: that is a warn, not a fail.
+
+A REPL run with `--bare` (`npx cliprobe --bare -- python3`) gets a pipe as stdin here, not a terminal, so it waits to read a script and may not stop on Ctrl-C, which nobody at a terminal sees. So with `--bare`, a command that is still running 3 seconds after the Ctrl-C and never printed anything is skipped, as restore skips REPLs, rather than failed. One that printed something first, such as a server's banner, still fails. To check a REPL's Ctrl-C, try it in a terminal.
 
 The verdict is about the program itself: it passes once it exits, even if a child still holds its output open. What it leaves running gets 1 more second to follow, then is listed and killed. A process still there ignored the Ctrl-C, as a shell's background job does (`sh -c 'worker & server'`), so it would outlive the terminal's Ctrl-C too: that is a warn, added in 1.4.
 

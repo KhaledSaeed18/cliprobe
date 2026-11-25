@@ -1,8 +1,19 @@
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { judgeCtrlC } from '../src/checks/ctrl-c.ts';
+import type { RunResult } from '../src/core/run.ts';
 import { cliprobe, endsWith, first, fixture, probeJson, runCheck, running } from './helpers/cli.ts';
 
 const node = process.execPath;
+const hasPython = ((): boolean => {
+    try {
+        execFileSync('python3', ['-c', '0'], { stdio: 'ignore' });
+        return true;
+    } catch {
+        return false;
+    }
+})();
 const only = { checks: ['ctrl-c'] };
 
 interface CtrlCJson {
@@ -84,6 +95,58 @@ describe('ctrl-c: fixtures', () => {
         expect(running(endsWith('ctrl-c-orphan'))).toEqual([]);
     });
 
+    describe('--bare (#43)', () => {
+        const bare = async (
+            name: string
+        ): Promise<{ status: number | null; result: CtrlCJson }> => {
+            const path = fileURLToPath(new URL(`fixtures/ctrl-c/${name}`, import.meta.url));
+            const r = await cliprobe(['--json', '--bare', '--check', 'ctrl-c', '--', path]);
+            const report = JSON.parse(r.stdout) as { results: CtrlCJson[] };
+            return { status: r.status, result: report.results[0]! };
+        };
+
+        it('skips a program that prints nothing and outlives Ctrl-C, as a REPL reading a pipe does', async () => {
+            const { status, result } = await bare('silent-repl');
+            expect(result.verdict).toBe('skip');
+            expect(result.reason).toMatch(
+                /^still running 3 s after Ctrl-C without printing anything/
+            );
+            expect(result.details.sentAfterMs).toBeGreaterThanOrEqual(1000);
+            expect(status).toBe(0);
+        });
+
+        it('still fails a program that printed something and then ignored Ctrl-C', async () => {
+            const { status, result } = await bare('loud-ignores');
+            expect(result.verdict).toBe('fail');
+            expect(result.reason).toBe('ignored Ctrl-C: still running 3 s later');
+            expect(status).toBe(1);
+        });
+
+        it.skipIf(!hasPython)('skips python3, a REPL that reads a pipe as a script', async () => {
+            const r = await cliprobe(['--json', '--bare', '--check', 'ctrl-c', '--', 'python3']);
+            expect((JSON.parse(r.stdout) as { results: CtrlCJson[] }).results[0]?.verdict).toBe(
+                'skip'
+            );
+            expect(r.status).toBe(0);
+        });
+    });
+
+    it('still fails a silent program that ignores Ctrl-C when the probe has arguments', () => {
+        const r = {
+            stdout: Buffer.alloc(0),
+            stdoutBytes: 0,
+            stderr: '',
+            exitCode: null,
+            signal: 'SIGKILL',
+            timedOut: true,
+            durationMs: 4000,
+            signalSentMs: 1000,
+        } as unknown as RunResult;
+        expect(judgeCtrlC(r).verdict).toBe('fail');
+        expect(judgeCtrlC(r, true).verdict).toBe('skip');
+        expect(judgeCtrlC({ ...r, stderr: 'waiting\n' }, true).verdict).toBe('fail');
+    });
+
     it('exits 1 when it fails', async () => {
         expect((await probe(ctrlFixture('ignores'))).status).toBe(1);
     });
@@ -123,15 +186,6 @@ describe('ctrl-c: real tools', () => {
         expect(result.details.leftRunning).toEqual(['sleep 76']);
         expect(running((line) => line === 'sleep 76')).toEqual([]);
     });
-
-    const hasPython = (() => {
-        try {
-            execFileSync('python3', ['--version'], { stdio: 'ignore' });
-            return true;
-        } catch {
-            return false;
-        }
-    })();
 
     it.skipIf(!hasPython)(
         'python3 sleeping fails with its KeyboardInterrupt traceback',

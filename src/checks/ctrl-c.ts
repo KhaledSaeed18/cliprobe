@@ -29,7 +29,12 @@ export interface CtrlCResult extends Result {
     stderrAfter: string;
 }
 
-export function judgeCtrlC(r: RunResult): Judgement {
+/**
+ * `bare` is true for the --bare probe, the command with no arguments. A REPL run that
+ * way (python3) gets a pipe as stdin, reads it as a script and doesn't stop on SIGINT,
+ * which no one at a terminal sees; restore, under a terminal, skips REPLs too (#43).
+ */
+export function judgeCtrlC(r: RunResult, bare = false): Judgement {
     if (r.spawnError) return { verdict: 'error', reason: `could not start: ${r.spawnError}` };
     if (r.signalSentMs === undefined) {
         return noteFailedExit(
@@ -41,6 +46,13 @@ export function judgeCtrlC(r: RunResult): Judgement {
         );
     }
     if (r.timedOut) {
+        // Only silent: a --bare server that printed a banner and then ignored Ctrl-C fails.
+        if (bare && r.stdoutBytes === 0 && r.stderr === '') {
+            return {
+                verdict: 'skip',
+                reason: `still running ${CTRL_C_GRACE_MS / 1000} s after Ctrl-C without printing anything, as a REPL does when stdin is a pipe (it waits for a script, not a keypress); run it in a terminal to check its Ctrl-C`,
+            };
+        }
         return {
             verdict: 'fail',
             reason: `ignored Ctrl-C: still running ${CTRL_C_GRACE_MS / 1000} s later`,
@@ -97,7 +109,7 @@ export async function ctrlC(command: string, args: readonly string[]): Promise<C
     return {
         check: 'ctrl-c',
         invocation: [command, ...args],
-        ...judgeCtrlC(r),
+        ...judgeCtrlC(r, args.length === 0),
         sentAfterMs: sent ?? null,
         exitedAfterMs: sent === undefined || r.timedOut ? null : r.durationMs - sent,
         exitCode: r.exitCode,
