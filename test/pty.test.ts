@@ -164,9 +164,11 @@ describe('runPty', () => {
     });
 
     it('delivers Ctrl-C as a key to a program in raw mode', async () => {
+        // Typed only once Node has surely started and switched to raw mode: typed
+        // earlier, the terminal turns it into SIGINT (output "^C"), as on slow CI runners.
         const r = await runPty(node, [fixture('restore/raw-key-restores')], {
-            timeout: 5000,
-            input: { data: '\x03', afterMs: 500 },
+            timeout: 8000,
+            input: { data: '\x03', afterMs: 2000 },
         });
         expect(r.timedOut).toBe(false);
         expect(r.output).toContain('\x1b[?1049l');
