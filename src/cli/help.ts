@@ -35,7 +35,9 @@ Checks:
                 prints a stack trace; warns if it exits 0, or exits and leaves
                 processes running that ignored the Ctrl-C. Skipped when the
                 command finishes first, so probe a command that keeps running
-                (a watcher, a server, a long task), e.g. with --probe "serve".
+                (a watcher, a server, a long task), e.g. with --probe "serve";
+                with --bare, also when a silent command outlives the Ctrl-C,
+                as a REPL reading a pipe does.
   sigterm       Sends SIGTERM to the command alone after 1 s, as kill, docker
                 stop and process managers do. Warns if it is still running 3 s
                 later, prints a stack trace, or exits and leaves child

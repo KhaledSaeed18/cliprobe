@@ -1,0 +1,5 @@
+#!/usr/bin/env node
+// Like a REPL given a pipe as stdin (python3 does this): reads it as a script,
+// prints nothing until it ends, and doesn't stop on Ctrl-C meanwhile.
+process.on('SIGINT', () => {});
+process.stdin.resume();

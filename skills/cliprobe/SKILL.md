@@ -91,7 +91,7 @@ A failed check exits 1, so the step fails. Pin the major version and include the
 ## 6. Troubleshooting
 
 - **Exit `2` and no report:** the command can't run, or the arguments to cliprobe are wrong. The message says which: not found (check the path after `--`; a relative path needs `./`), a directory, not executable (`chmod +x`), or a missing `#!` interpreter. An `--output-file` path that can't be written (a directory, a folder without write permission) also stops it up front.
-- **Everything `SKIP`ped in ctrl-c and sigterm:** no probe kept running for a second. Add a `--probe` for a watch or serve command.
+- **Everything `SKIP`ped in ctrl-c and sigterm:** no probe kept running for a second. Add a `--probe` for a watch or serve command. With `--bare` on a REPL (`python3`), ctrl-c skips a program that prints nothing and outlives the Ctrl-C, because its stdin is a pipe, not a terminal: say that its Ctrl-C wasn't tested.
 - **`control-chars` skipped:** no probe contained `{fixture}`, or the probe didn't print the names.
 - **`ERROR`:** the probe could not start or crashed before any check could judge it; the reason says why.
 - **A `SKIP` that adds "it exited N, so the probe may not have run as intended":** the probe failed before doing anything; the evidence quotes its error line. Fix the probe's arguments. With `-- node ./dist/cli.js`, a `--probe` must name the script too (see section 2).

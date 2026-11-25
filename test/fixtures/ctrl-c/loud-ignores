@@ -1,0 +1,5 @@
+#!/usr/bin/env node
+// A server that prints a banner, then swallows Ctrl-C: a real failure, even under --bare.
+process.on('SIGINT', () => {});
+console.log('listening on :8080');
+setInterval(() => {}, 1000);
