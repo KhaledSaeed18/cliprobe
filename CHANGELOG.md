@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.5.1](https://github.com/KhaledSaeed18/cliprobe/compare/v1.5.0...v1.5.1) (2026-11-25)
+
+### Bug Fixes
+
+* **ctrl-c:** skip a silent --bare probe that outlives Ctrl-C ([4914f6a](https://github.com/KhaledSaeed18/cliprobe/commit/4914f6ad865236389dbe555f067939e21452c558)), closes [#43](https://github.com/KhaledSaeed18/cliprobe/issues/43)
+
 ## [1.5.0](https://github.com/KhaledSaeed18/cliprobe/compare/v1.4.4...v1.5.0) (2026-11-25)
 
 ### Features
